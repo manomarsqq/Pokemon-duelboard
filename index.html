@@ -1,0 +1,1790 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Battle Screen Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;500&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap">
+<style>
+/* Workbench layout: editor rail on the left, live battle and AO3 code on the right; one column on phones. */
+:root {
+  --bg: #eaedf2;
+  --panel: #ffffff;
+  --panel-2: #f3f5f9;
+  --ink: #18202f;
+  --muted: #566078;
+  --line: #d1d8e4;
+  --accent: #c8352e;
+  --accent-ink: #ffffff;
+  --sel: #d99a00;
+  --ok: #1d7a3b;
+  --bad: #b3261e;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Nunito Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f131b; --panel: #171d29; --panel-2: #1e2533; --ink: #e7ebf3; --muted: #9aa4b8;
+    --line: #2c3547; --accent: #ff7a6e; --accent-ink: #0f131b; --sel: #ffd84a; --ok: #6fd38e; --bad: #ff8f85;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f131b; --panel: #171d29; --panel-2: #1e2533; --ink: #e7ebf3; --muted: #9aa4b8;
+  --line: #2c3547; --accent: #ff7a6e; --accent-ink: #0f131b; --sel: #ffd84a; --ok: #6fd38e; --bad: #ff8f85;
+  color-scheme: dark;
+}
+
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+.page {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 16px;
+}
+
+/* ---------- Header ---------- */
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.top h1 { margin: 0; font: 700 2.4rem/1 var(--f-display); letter-spacing: 0.01em; text-transform: uppercase; text-wrap: balance; }
+.top h1 span { color: var(--accent); }
+.top p { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
+.top-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---------- Panels ---------- */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.panel h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font: 700 1.35rem/1.1 var(--f-display); letter-spacing: 0.03em; text-transform: uppercase; }
+.panel h3 { margin: 0 0 10px; font: 700 1.1rem/1.1 var(--f-display); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.step-no { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 0.9em; }
+.muted { color: var(--muted); }
+
+.skin-step { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 24px; align-items: start; }
+.skin-step ol { margin: 0; padding-left: 1.3em; }
+.skin-step ol li + li { margin-top: 2px; }
+.skin-step .actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+@media (max-width: 700px) { .skin-step { grid-template-columns: minmax(0, 1fr); } .skin-step .actions { flex-direction: row; flex-wrap: wrap; } }
+
+.work {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+  grid-template-areas: "edit board" "edit code";
+  align-items: start;
+}
+.col-edit { grid-area: edit; display: grid; gap: 16px; min-width: 0; }
+.board-panel { grid-area: board; }
+.code-panel { grid-area: code; }
+@media (max-width: 900px) {
+  .work { grid-template-columns: minmax(0, 1fr); grid-template-areas: "board" "edit" "code"; }
+}
+
+/* ---------- Form controls ---------- */
+.field { display: grid; gap: 4px; margin-bottom: 12px; min-width: 0; align-content: start; }
+.field > label, .legend { font-weight: 700; font-size: 0.86rem; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 10px; }
+.row3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 10px; }
+input[type="text"], input[type="number"], input[type="url"], select, textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+}
+textarea { resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.inline { display: flex; gap: 8px; }
+.inline input { flex: 1; min-width: 0; }
+
+.checks { display: grid; gap: 8px; margin-bottom: 12px; }
+.check { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: start; font-size: 0.92rem; cursor: pointer; }
+.check input { margin: 3px 0 0; width: 16px; height: 16px; accent-color: var(--accent); }
+.check input:disabled + span { opacity: 0.5; }
+
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; justify-self: start; }
+.seg label { position: relative; cursor: pointer; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { display: block; padding: 6px 13px; font-size: 0.9rem; font-weight: 600; background: var(--panel-2); }
+.seg label + label span { border-left: 1px solid var(--line); }
+.seg input:checked + span { background: var(--accent); color: var(--accent-ink); }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -3px; }
+
+.btn, .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font: 600 0.92rem/1.2 var(--f-body);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn { background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); }
+.btn:hover { filter: brightness(1.08); }
+.btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn-ghost:hover { border-color: var(--accent); }
+.btn-ghost.danger { color: var(--bad); }
+.btn-ghost:disabled { opacity: 0.45; cursor: default; border-color: var(--line); }
+.btn-sm { padding: 4px 10px; font-size: 0.84rem; }
+
+.hint { margin: 0; font-size: 0.84rem; color: var(--muted); }
+.hint.ok { color: var(--ok); }
+.hint.bad { color: var(--bad); }
+.empty-note { margin: 0; color: var(--muted); }
+.zone-title { margin: 0 0 12px; padding: 6px 10px; border-left: 4px solid var(--sel); background: var(--panel-2); border-radius: 0 6px 6px 0; font-weight: 700; }
+.sub { margin: 4px 0 10px; padding-top: 10px; border-top: 1px solid var(--line); font-weight: 700; font-size: 0.86rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.trainer + .trainer { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--line); }
+
+.lookup-out { display: grid; gap: 6px; }
+.lookup-out:empty { display: none; }
+.results { display: grid; gap: 4px; max-height: 260px; overflow: auto; }
+.result {
+  display: flex; justify-content: space-between; gap: 8px; padding: 6px 9px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); color: var(--ink);
+  font: inherit; font-size: 0.9rem; text-align: left; cursor: pointer;
+}
+.result span { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
+.result:hover { border-color: var(--accent); }
+.lookup-out a, .hint a { color: var(--accent); }
+
+.pic-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.pic-row img { width: 56px; height: 56px; object-fit: contain; border-radius: 4px; border: 1px solid var(--line); background: var(--panel-2); image-rendering: pixelated; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+/* Move rows: name, type, PP, max PP */
+.mv-grid { display: grid; grid-template-columns: minmax(0, 1fr) 96px 54px 54px; gap: 6px; align-items: center; }
+.mv-grid .mv-h { font-size: 0.78rem; font-weight: 700; color: var(--muted); }
+.mv-grid input, .mv-grid select { padding: 6px 7px; font-size: 0.9rem; }
+
+/* Party ball buttons in the editor */
+.balls-ed { display: flex; gap: 4px; flex-wrap: wrap; padding-top: 4px; }
+.ball-btn {
+  width: 22px; height: 22px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 2px solid #222;
+  background: linear-gradient(#e8353a 0, #e8353a 43%, #222 43%, #222 57%, #fafafa 57%);
+}
+.ball-btn.b-st { background: linear-gradient(#f0a020 0, #f0a020 43%, #222 43%, #222 57%, #fafafa 57%); }
+.ball-btn.b-fnt { background: linear-gradient(#8a8a8a 0, #8a8a8a 43%, #333 43%, #333 57%, #c4c4c4 57%); opacity: 0.75; }
+.ball-btn.b-none { background: transparent; border: 2px dashed var(--muted); }
+.ball-btn:hover { transform: scale(1.1); }
+
+/* ---------- Preview ---------- */
+.board-panel .hint { margin-bottom: 8px; }
+.preview { min-width: 0; }
+.preview .pkb-battle { margin-top: 0; }
+#workskin [data-m], #workskin [data-ball], #workskin [data-msg] { cursor: pointer; }
+#workskin .is-sel { outline: 3px solid var(--sel); outline-offset: 2px; border-radius: 6px; }
+#workskin [data-m]:focus-visible, #workskin [data-msg]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#workskin .pkb-mon.pkb-gone { visibility: visible; height: 6em; outline: 2px dashed rgba(255, 255, 255, 0.75); outline-offset: -2px; border-radius: 8px; background: rgba(0, 0, 0, 0.12); }
+#workskin .pkb-mon.pkb-gone.is-sel { outline: 3px solid var(--sel); }
+.pkb-add { display: block; padding-top: 2.3em; color: #fff; font: 700 0.85em/1.2 var(--f-body); text-shadow: 0 1px 2px #000; }
+
+/* ---------- Code output ---------- */
+.code-panel ol { margin: 0 0 12px; padding-left: 1.3em; }
+.code-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.status { font-size: 0.86rem; color: var(--ok); font-weight: 600; }
+textarea.code { height: 220px; font: 0.78rem/1.45 var(--f-mono); white-space: pre; overflow: auto; }
+details { margin-top: 12px; }
+summary { cursor: pointer; font-weight: 700; }
+details[open] summary { margin-bottom: 8px; }
+.log-preview .pkb-log { margin: 0 0 10px; }
+</style>
+</head>
+<body>
+
+
+<script type="text/plain" id="skin-css">/* =====================================================================
+   POKEMON BATTLE SCREEN — AO3 Work Skin
+
+   HOW TO INSTALL
+   AO3 Dashboard → Skins → My Work Skins → Create Work Skin, paste this
+   whole file, save. Then on your work's Edit page pick it under
+   "Select Work Skin". AO3 quietly adds "#workskin" in front of every
+   rule, so these styles only ever touch your own story.
+
+   HOW TO READ THIS FILE (a 30-second CSS primer)
+   - Anything between slash-star and star-slash, like this text, is a
+     comment. The browser ignores it; it's only here for you.
+   - A rule looks like:   .pkb-box { color: red; }
+       .pkb-box    = "every element whose class is pkb-box"
+                     (in the HTML that's  class="pkb-box")
+       { ... }     = the list of looks to give those elements
+       color: red; = one look: a "property" and its "value"
+   - ".pkb-me .pkb-box" (two names with a space) means "a pkb-box that
+     sits INSIDE a pkb-me". ".pkb-box.pkb-tgt" (no space) means "one
+     element that has BOTH classes".
+   - Every class here starts with "pkb-" so it can't clash with AO3's
+     own class names.
+
+   UNITS: em = one letter-height, so the whole screen grows and shrinks
+   with the reader's text size. % = a share of the space available.
+   px = a fixed screen pixel, used only for thin lines.
+
+   Many rules set "background" twice: first a plain colour, then a
+   gradient. Browsers use the last one they understand, so the plain
+   colour is a safety net.
+   ===================================================================== */
+
+
+/* =====================================================================
+   1. THE FRAME
+   The dark console-coloured box around everything. In the HTML it's the
+   outermost <div class="pkb-battle">.
+   ===================================================================== */
+.pkb-battle {
+  margin: 1.5em auto;               /* space above/below; "auto" centres it */
+  max-width: 40em;                  /* never wider than this on big screens */
+  padding: 0.45em;
+  background: #2b2f3a;
+  background: linear-gradient(#3a3f4d, #20232b);
+  border: 3px solid #14161c;
+  border-radius: 0.7em;
+  color: #fff;
+  font-family: "Trebuchet MS", "Segoe UI", Verdana, Arial, sans-serif;
+  line-height: 1.25;
+  text-align: left;
+  position: relative;               /* the hover info panels (section 9) are placed against this box */
+}
+
+/* AO3 sometimes slips extra line breaks (<br>) and paragraphs (<p>) into
+   pasted HTML. These rules make them harmless inside the battle screen
+   and the log box, so they can't break the layout. */
+.pkb-battle br, .pkb-log br { display: none; }
+.pkb-battle p, .pkb-log p { display: inline; margin: 0; padding: 0; }
+
+/* AO3 gives tables its own borders and backgrounds; switch those off. */
+.pkb-head, .pkb-field, .pkb-moves { margin: 0; border: none; background: none; }
+.pkb-head td, .pkb-field td, .pkb-moves td { border: none; background: none; }
+
+
+/* =====================================================================
+   2. TRAINER BARS AND PARTY BALLS
+   The opponent's name sits above the field, yours below it. Each has a
+   row of six Poke Balls, one per Pokemon in the party.
+   ===================================================================== */
+.pkb-head { width: 100%; border-collapse: collapse; border-spacing: 0; }
+.pkb-head td { padding: 0.1em 0.3em 0.4em; vertical-align: middle; text-align: left; }
+.pkb-head td + td { text-align: right; }          /* the second cell holds the badges, pushed right */
+.pkb-bar { padding: 0.4em 0.3em 0.1em; }
+
+.pkb-tname {
+  margin-right: 0.45em;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-shadow: 1px 1px 0 #000;
+  vertical-align: middle;
+}
+.pkb-balls { display: inline-block; white-space: nowrap; vertical-align: middle; }
+
+/* One Poke Ball: red top, black band, white bottom, drawn with a gradient. */
+.pkb-ball {
+  display: inline-block;
+  width: 0.95em;
+  height: 0.95em;
+  margin-right: 0.12em;
+  overflow: hidden;
+  border: 1px solid #111;
+  border-radius: 50%;               /* turns the square into a circle */
+  background: #e8353a;
+  background: linear-gradient(#ee3b3b 0, #ee3b3b 43%, #222 43%, #222 57%, #fafafa 57%);
+  font-size: 0.9em;
+  line-height: 0.95em;
+  vertical-align: middle;
+}
+.pkb-ball-st { background: #f0a020; background: linear-gradient(#f0a020 0, #f0a020 43%, #222 43%, #222 57%, #fafafa 57%); }   /* has a status problem */
+.pkb-ball-fnt { background: #777; background: linear-gradient(#8a8a8a 0, #8a8a8a 43%, #333 43%, #333 57%, #b8b8b8 57%); opacity: 0.6; }  /* fainted */
+.pkb-ball-none { background: none; border: 1px dashed rgba(255, 255, 255, 0.45); }   /* no Pokemon in this slot */
+
+/* Badges on the right of the top bar: weather, terrain, field effects, turn. */
+.pkb-badge {
+  display: inline-block;
+  margin: 0.1em 0 0.1em 0.3em;
+  padding: 0.1em 0.55em;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 1em;
+  color: #fff;
+  font-size: 0.78em;
+  font-weight: bold;
+  white-space: nowrap;
+}
+.pkb-wx-sun { background: #d9822b; }
+.pkb-wx-rain { background: #3b6fc4; }
+.pkb-wx-sand { background: #a8834a; }
+.pkb-wx-snow, .pkb-wx-hail { background: #6f9cc4; }
+.pkb-wx-fog { background: #7d8088; }
+.pkb-wx-wind { background: #4a9a86; }
+.pkb-tr-electric { background: #d9b400; color: #222; }
+.pkb-tr-grassy { background: #3f9e4a; }
+.pkb-tr-misty { background: #d77fb8; }
+.pkb-tr-psychic { background: #9b4fc8; }
+.pkb-turn { background: #f1ecd8; border-color: #8a8a8a; color: #2f4fa8; }
+
+
+/* =====================================================================
+   3. THE FIELD
+   The battle scene. A <table> with two rows keeps everything in place
+   (AO3 leaves tables alone):
+     top row:    opponent's HP boxes (left)  | opponent's Pokemon (right)
+     bottom row: your Pokemon (left)         | your HP boxes (right)
+   ===================================================================== */
+
+/* Lets the field scroll sideways on very narrow phones instead of squashing. */
+.pkb-scroll { overflow: auto; }
+
+.pkb-scene {
+  min-width: 18em;                  /* below this the field scrolls sideways */
+  overflow: hidden;                 /* clips the corners of the weather layer */
+  border: 2px solid #111;
+  border-radius: 0.45em;
+  background: #9fd4ff;
+}
+.pkb-field { width: 100%; table-layout: fixed; border-collapse: collapse; border-spacing: 0; }
+.pkb-field td { width: 50%; padding: 0.45em 0.55em; }
+.pkb-opp .pkb-boxes { text-align: left; vertical-align: top; }
+.pkb-opp .pkb-sprites { text-align: right; vertical-align: bottom; padding-top: 1em; }
+.pkb-me .pkb-sprites { text-align: left; vertical-align: bottom; padding-top: 0.2em; }
+.pkb-me .pkb-boxes { text-align: right; vertical-align: bottom; }
+
+/* Backgrounds: sky at the top, ground below. Pick one class on pkb-scene. */
+.pkb-bg-grass { background: #9fd4ff; background: linear-gradient(#8ccbff, #def2ff 30%, #b5e08a 34%, #79bb55 70%, #5c9e40); }
+.pkb-bg-forest { background: #3f6b4a; background: linear-gradient(#2f5a3a, #7aa86c 30%, #4f8a3c 34%, #3a7030 70%, #264d1e); }
+.pkb-bg-cave { background: #4a3c2e; background: linear-gradient(#2a2420, #5e5040 30%, #7a6650 34%, #5f4c3a 70%, #3d3024); }
+.pkb-bg-water { background: #5aa0e0; background: linear-gradient(#8ccbff, #def2ff 30%, #62a8e6 34%, #2f74c0 70%, #1d4f90); }
+.pkb-bg-beach { background: #f0dc9c; background: linear-gradient(#8ccbff, #def2ff 26%, #4fa3e0 30%, #8cc8f0 40%, #f0dc9c 45%, #d8b86c); }
+.pkb-bg-snow { background: #eef4fb; background: linear-gradient(#b8cbe0, #eef4fb 30%, #f7fafd 34%, #dbe6f1 70%, #b9cadc); }
+.pkb-bg-desert { background: #e8c48a; background: linear-gradient(#f2b766, #ffe6b8 30%, #ecc993 34%, #d5a66a 70%, #b98a50); }
+.pkb-bg-night { background: #1c2850; background: linear-gradient(#0b1230, #2a3a6e 30%, #2f5a3a 34%, #234a2c 70%, #14301a); }
+.pkb-bg-gym { background: #c9d0dc; background: linear-gradient(#aeb7c6, #eef1f6 30%, #c3cad6 34%, #a5afbf 70%, #8590a3); }
+.pkb-bg-stadium { background: #5a7bc8; background: linear-gradient(#3f5fae, #a8c0f0 30%, #dfe6f2 34%, #b7c8e4 70%, #8ea4ca); }
+.pkb-bg-volcano { background: #5a2a1a; background: linear-gradient(#2a0a06, #8a2a14 30%, #6a3420 34%, #4a2214 70%, #2a120a); }
+
+/* Weather tints, laid over the scene. Put one class on the pkb-field table
+   (".pkb-field.pkb-sky-rain" = the field table when it also has pkb-sky-rain). */
+.pkb-field.pkb-sky-sun { background: rgba(255, 210, 110, 0.2); background: radial-gradient(circle at 88% 0%, rgba(255, 236, 140, 0.75), rgba(255, 200, 90, 0.12) 60%); }
+.pkb-field.pkb-sky-rain { background: rgba(30, 60, 120, 0.2); background: repeating-linear-gradient(105deg, rgba(30, 60, 120, 0.18) 0, rgba(30, 60, 120, 0.18) 9px, rgba(215, 230, 255, 0.55) 10px, rgba(30, 60, 120, 0.18) 11px); }
+.pkb-field.pkb-sky-sand { background: rgba(200, 150, 70, 0.35); background: repeating-linear-gradient(170deg, rgba(196, 146, 70, 0.32) 0, rgba(196, 146, 70, 0.32) 6px, rgba(235, 200, 140, 0.5) 8px, rgba(196, 146, 70, 0.32) 10px); }
+.pkb-field.pkb-sky-snow, .pkb-field.pkb-sky-hail { background: rgba(255, 255, 255, 0.28); background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.2) 0, rgba(255, 255, 255, 0.2) 12px, rgba(255, 255, 255, 0.7) 13px, rgba(255, 255, 255, 0.2) 15px); }
+.pkb-field.pkb-sky-fog { background: rgba(225, 225, 230, 0.5); }
+.pkb-field.pkb-sky-wind { background: rgba(200, 240, 230, 0.15); background: repeating-linear-gradient(178deg, rgba(200, 240, 230, 0.1) 0, rgba(200, 240, 230, 0.1) 14px, rgba(255, 255, 255, 0.45) 15px, rgba(200, 240, 230, 0.1) 16px); }
+
+
+/* =====================================================================
+   4. POKEMON ON THE FIELD
+   Each Pokemon is a pkb-mon box holding its sprite (an <img>) and the
+   oval platform (pkb-base) it stands on. The row's class says how many
+   share the side, so two or three shrink to fit:
+   pkb-n1 = one Pokemon, pkb-n2 = two, pkb-n3 = three.
+   ===================================================================== */
+.pkb-mon {
+  display: inline-block;            /* side by side in doubles */
+  max-width: 92%;
+  margin: 0 0.15em;
+  vertical-align: bottom;
+  text-align: center;
+  cursor: pointer;                  /* tells phones the Pokemon can be tapped (section 9) */
+}
+.pkb-n2 .pkb-mon { max-width: 46%; }
+.pkb-n3 .pkb-mon { max-width: 30%; }
+
+/* The sprite. Its size comes from the width="..." number in the HTML;
+   max-width stops it spilling out on small screens. */
+.pkb-mon img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  position: relative;               /* lets z-index lift it above the platform */
+  z-index: 1;
+}
+
+/* The oval platform. The negative top margin tucks it under the feet. */
+.pkb-base {
+  display: block;
+  min-width: 4em;
+  height: 1.3em;
+  margin: -1.15em auto 0;
+  background: rgba(255, 255, 255, 0.32);
+  border: 2px solid rgba(0, 0, 0, 0.14);
+  border-radius: 50%;
+  font-size: 1em;
+  line-height: 1;
+}
+.pkb-bg-night .pkb-base, .pkb-bg-cave .pkb-base, .pkb-bg-volcano .pkb-base { background: rgba(255, 255, 255, 0.14); }
+
+/* Stand-in when a Pokemon has no picture: a grey circle with "?". */
+.pkb-nosprite {
+  display: block;
+  width: 3.4em;
+  height: 3.4em;
+  margin: 0 auto 0.4em;
+  line-height: 3.4em;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 1.4em;
+  font-weight: bold;
+  position: relative;
+  z-index: 1;
+}
+
+/* A fainted Pokemon fades out. */
+.pkb-fnt img, .pkb-fnt .pkb-nosprite { opacity: 0.22; }
+
+/* An empty slot (a Pokemon left the field): keeps the space, shows nothing. */
+.pkb-gone { width: 5em; visibility: hidden; cursor: default; }
+
+/* The gold arrow over a targeted Pokemon. */
+.pkb-mark {
+  display: block;
+  color: #ffd84a;
+  font-size: 1.3em;
+  line-height: 1;
+  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+}
+
+
+/* =====================================================================
+   5. HP BOXES
+   The cream boxes with name, level, HP bar and status.
+   ===================================================================== */
+.pkb-box {
+  display: block;
+  width: 13em;
+  max-width: 85%;                   /* leaves room for the padding and border on narrow phones */
+  margin: 0 0 0.4em;
+  padding: 0.3em 0.55em 0.4em;
+  background: #f4f0de;
+  background: linear-gradient(#fffdf2, #e4dec4);
+  border: 2px solid #3a3a3a;
+  border-radius: 0.25em 1.1em 0.25em 1.1em;   /* top-left, top-right, bottom-right, bottom-left */
+  box-shadow: 0 0.15em 0.3em rgba(0, 0, 0, 0.4);
+  color: #303030;
+  text-align: left;
+}
+/* Your boxes hug the right edge and lean the other way. */
+.pkb-me .pkb-box { margin: 0.4em 0 0 auto; border-radius: 1.1em 0.25em 1.1em 0.25em; }
+
+/* Name line. The level floats to the right end. */
+.pkb-nm { display: block; overflow: hidden; white-space: nowrap; font-weight: bold; }
+.pkb-lv { float: right; margin-left: 0.4em; font-size: 0.85em; line-height: 1.45; }
+.pkb-g-m { color: #2f6fd8; }        /* ♂ in blue */
+.pkb-g-f { color: #e0457a; }        /* ♀ in pink */
+
+/* The HP bar: a dark strip holding the orange "HP" tag and the track. */
+.pkb-hp {
+  display: block;
+  margin-top: 0.2em;
+  padding: 0.15em 0.2em;
+  background: #4a4a4a;
+  border-radius: 0.3em;
+  line-height: 1;
+}
+.pkb-hptag { float: left; color: #f8b830; font-size: 0.68em; font-weight: bold; line-height: 7px; }
+.pkb-track { display: block; height: 7px; margin-left: 1.6em; overflow: hidden; background: #2a2a2a; border: 1px solid #ddd; border-radius: 4px; }
+/* The coloured fill. Its colour class: hi = over half, mid = up to half, low = a fifth or less. */
+.pkb-fill { display: block; height: 7px; font-size: 0; line-height: 0; }
+.pkb-hp-hi { background: #3cd24c; background: linear-gradient(#78f882, #36bf46); }
+.pkb-hp-mid { background: #f8c820; background: linear-gradient(#ffe066, #e8b210); }
+.pkb-hp-low { background: #f04030; background: linear-gradient(#ff7a6a, #d82a1e); }
+
+/* Second line: status tag on the left, HP numbers on the right. */
+.pkb-row2 { display: block; margin-top: 0.2em; text-align: right; }
+.pkb-hpn { font-weight: bold; letter-spacing: 0.04em; }
+
+/* Status tags. */
+.pkb-st {
+  display: inline-block;
+  float: left;
+  margin-top: 0.1em;
+  padding: 0 0.35em;
+  border-radius: 0.25em;
+  color: #fff;
+  font-size: 0.72em;
+  font-weight: bold;
+  line-height: 1.4;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
+}
+.pkb-st-par { background: #c9a400; }
+.pkb-st-brn { background: #e0592a; }
+.pkb-st-psn { background: #a040a0; }
+.pkb-st-tox { background: #6e2384; }
+.pkb-st-slp { background: #8a8a8a; }
+.pkb-st-frz { background: #3fa6d4; }
+.pkb-st-fnt { background: #555; }
+/* Inside the info panel the tag sits in the line instead of floating. */
+.pkb-sum .pkb-st { float: none; margin: 0 0 0 0.3em; vertical-align: middle; }
+
+/* Stat changes and effects under the bar ("Atk +2", "Confused"). */
+.pkb-chips { display: block; margin-top: 0.15em; }
+.pkb-chip {
+  display: inline-block;
+  margin: 0.15em 0.2em 0 0;
+  padding: 0 0.4em;
+  background: #5a6070;
+  border-radius: 0.6em;
+  color: #fff;
+  font-size: 0.7em;
+  font-weight: bold;
+  line-height: 1.5;
+}
+.pkb-chip-up { background: #d9532b; }     /* a stat went up */
+.pkb-chip-down { background: #3a6fd0; }   /* a stat went down */
+
+/* A targeted Pokemon's box gets a gold edge. */
+.pkb-box.pkb-tgt { border-color: #c08a00; box-shadow: 0 0 0 0.15em #ffd84a, 0 0.15em 0.3em rgba(0, 0, 0, 0.4); }
+
+
+/* =====================================================================
+   6. MESSAGE BOX
+   The text box under the field ("What will Pikachu do?").
+   Each pkb-line is one line of text.
+   ===================================================================== */
+.pkb-msg {
+  display: block;
+  min-height: 2.7em;
+  margin: 0.45em 0 0;
+  padding: 0.55em 0.85em;
+  background: #fafafa;
+  border: 3px solid #5d7ab8;
+  border-radius: 0.45em;
+  box-shadow: inset 0 0 0 2px #c8d4ee;
+  color: #383838;
+  font-size: 1.05em;
+  font-weight: bold;
+  line-height: 1.35;
+  text-shadow: 1px 1px 0 #d8d8d0;
+}
+.pkb-line { display: block; }
+
+
+/* =====================================================================
+   7. MOVE PANEL (optional)
+   Four move buttons in a 2 × 2 table, coloured by type (section 10).
+   ===================================================================== */
+.pkb-moves { width: 100%; margin-top: 0.3em; table-layout: fixed; border-collapse: separate; border-spacing: 0.3em 0.3em; }
+.pkb-moves td { width: 50%; padding: 0; }
+.pkb-move {
+  display: block;
+  padding: 0.3em 0.6em 0.35em;
+  background: #888;
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  border-radius: 0.5em;
+  box-shadow: inset 0 -0.2em 0 rgba(0, 0, 0, 0.18);
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
+}
+.pkb-mname { display: block; overflow: hidden; white-space: nowrap; font-weight: bold; }
+.pkb-minfo { display: block; overflow: hidden; font-size: 0.74em; }
+.pkb-mtype { float: left; letter-spacing: 0.05em; text-transform: uppercase; }
+.pkb-mpp { float: right; }
+.pkb-move-sel { border-color: #ffd84a; box-shadow: 0 0 0 0.15em #ffd84a, inset 0 -0.2em 0 rgba(0, 0, 0, 0.18); }  /* the chosen move */
+.pkb-move-out { opacity: 0.5; }     /* no PP left */
+.pkb-move-none { background: rgba(255, 255, 255, 0.08); border: 2px dashed rgba(255, 255, 255, 0.3); box-shadow: none; color: rgba(255, 255, 255, 0.5); }
+
+
+/* =====================================================================
+   8. INFO PANEL PARTS
+   What the hover panel (section 9) is made of.
+   ===================================================================== */
+.pkb-sum-head { display: block; font-size: 1.15em; font-weight: bold; }
+.pkb-sum-name { color: #ffe14d; text-shadow: 1px 1px 0 #000; }
+.pkb-sum-lv { margin-right: 0.3em; font-size: 0.8em; }
+.pkb-sum-sp { display: block; color: #b9c6e4; font-size: 0.85em; }   /* species, when the Pokemon has a nickname */
+.pkb-sum-line { display: block; }
+.pkb-k { margin-right: 0.25em; color: #9fd0ff; font-size: 0.78em; font-weight: bold; letter-spacing: 0.04em; text-transform: uppercase; }
+.pkb-item { margin-left: 0.2em; }
+.pkb-sum-moves { display: block; margin-top: 0.15em; }
+.pkb-sum-text { display: block; margin-top: 0.3em; font-style: italic; }
+
+/* Type badges ("Dragon") and the move chips in the panel. */
+.pkb-type, .pkb-mv {
+  display: inline-block;
+  margin: 0.15em 0.2em 0 0;
+  padding: 0.05em 0.5em;
+  background: #888;
+  border-radius: 0.5em;
+  color: #fff;
+  font-size: 0.72em;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
+  vertical-align: middle;
+}
+.pkb-type { text-transform: uppercase; }
+.pkb-mv { font-size: 0.85em; letter-spacing: 0; }
+
+
+/* =====================================================================
+   9. HOVER INFO PANELS (optional)
+   AO3 doesn't allow scripts, so each Pokemon carries its own hidden info
+   panel (pkb-sum) inside its pkb-mon box. Pointing at the Pokemon (or
+   tapping it on a phone) shows the panel laid over the message box at
+   the bottom. Move away and it hides again.
+   ===================================================================== */
+.pkb-sum {
+  display: none;                    /* hidden until its Pokemon is pointed at */
+  position: absolute;               /* placed against the whole frame (.pkb-battle) */
+  left: 0.45em;
+  right: 0.45em;
+  bottom: 0.45em;
+  min-height: 3em;                  /* tall enough to cover the message box */
+  z-index: 9;
+  padding: 0.45em 0.8em 0.55em;
+  background: #1f2b44;
+  background: linear-gradient(#2b3b5e, #18223a);
+  border: 3px solid #ffd84a;
+  border-radius: 0.45em;
+  box-shadow: 0 0.2em 0.8em rgba(0, 0, 0, 0.5);
+  color: #f2f2f2;
+  font-size: 1em;
+  font-weight: normal;
+  line-height: 1.35;
+  text-align: left;
+  text-shadow: none;
+  cursor: default;
+}
+/* With the move panel showing, the info panel grows to cover it too. */
+.pkb-with-moves .pkb-sum { min-height: 9.9em; }
+/* The trigger: pointing at a Pokemon shows the panel inside it. */
+.pkb-mon:hover .pkb-sum { display: block; }
+
+
+/* =====================================================================
+   10. TYPE COLOURS
+   Used on move buttons, move chips and type badges, e.g. class="pkb-move pkb-t-fire".
+   Light colours get dark text so they stay readable.
+   ===================================================================== */
+.pkb-t-normal { background: #9a9a6e; }
+.pkb-t-fire { background: #ee8130; }
+.pkb-t-water { background: #5a8ae8; }
+.pkb-t-electric { background: #f2c824; color: #2a2a2a; text-shadow: none; }
+.pkb-t-grass { background: #66b83c; }
+.pkb-t-ice { background: #7fcfcb; color: #1e3a3a; text-shadow: none; }
+.pkb-t-fighting { background: #c22e28; }
+.pkb-t-poison { background: #a33ea1; }
+.pkb-t-ground { background: #d6b25a; color: #3a2a0a; text-shadow: none; }
+.pkb-t-flying { background: #8f7ae8; }
+.pkb-t-psychic { background: #f04f80; }
+.pkb-t-bug { background: #96a816; }
+.pkb-t-rock { background: #b0992e; }
+.pkb-t-ghost { background: #705898; }
+.pkb-t-dragon { background: #6038f0; }
+.pkb-t-dark { background: #5e4a3e; }
+.pkb-t-steel { background: #a8a8c4; color: #23233a; text-shadow: none; }
+.pkb-t-fairy { background: #d685ad; }
+
+
+/* =====================================================================
+   11. BATTLE LOG LINE
+   A message box for the story between screens: who used what, how
+   effective it was, and the HP change. pkb-delta is the red "−88";
+   add pkb-log-heal to the box to make it green for healing.
+   ===================================================================== */
+.pkb-log {
+  display: block;
+  max-width: 40em;
+  margin: 1em auto;
+  padding: 0.5em 0.85em;
+  background: #fafafa;
+  border: 3px solid #5d7ab8;
+  border-radius: 0.45em;
+  box-shadow: inset 0 0 0 2px #c8d4ee;
+  color: #383838;
+  font-family: "Trebuchet MS", "Segoe UI", Verdana, Arial, sans-serif;
+  font-weight: bold;
+  line-height: 1.4;
+  text-align: left;
+  text-shadow: 1px 1px 0 #d8d8d0;
+}
+.pkb-log-hp { display: block; margin-top: 0.3em; padding-top: 0.3em; border-top: 1px dashed #b8c4dc; color: #555; font-size: 0.9em; }
+.pkb-delta { margin-left: 0.4em; color: #d0342c; }
+.pkb-log-heal .pkb-delta { color: #1f9a3a; }
+
+
+/* =====================================================================
+   12. HP BAR WIDTHS
+   How full an HP bar is. Pick the class on the fill:
+   current HP ÷ max HP × 100, rounded. 315 of 315 → pkb-w100,
+   202 of 315 → pkb-w64, 0 → pkb-w0.
+   (AO3 doesn't allow per-element styles, so we need one class per size.)
+   ===================================================================== */
+</script>
+
+<div class="page">
+  <header class="top">
+    <div>
+      <h1>Battle Screen <span>Builder</span></h1>
+      <p>Build a Pokémon battle screen for your AO3 fic by clicking and typing. No code to write: copy the result into your chapter.</p>
+    </div>
+    <div class="top-actions">
+      <button type="button" class="btn-ghost" id="example-btn">Load the example battle</button>
+      <button type="button" class="btn-ghost danger" id="clear-btn">Clear the battle</button>
+    </div>
+  </header>
+
+  <section class="panel" aria-labelledby="skin-h">
+    <h2 id="skin-h"><span class="step-no">1</span> Install the Work Skin (once)</h2>
+    <div class="skin-step">
+      <ol>
+        <li>On AO3, go to <b>Dashboard → Skins → My Work Skins → Create Work Skin</b>.</li>
+        <li>Give it any title, paste the Work Skin into the <b>CSS</b> box, and submit.</li>
+        <li>On your fic's <b>Edit</b> page, pick it under <b>Select Work Skin</b> and post.</li>
+      </ol>
+      <div class="actions">
+        <button type="button" class="btn" id="copy-skin">Copy the Work Skin</button>
+        <span class="status" id="skin-status" aria-live="polite"></span>
+      </div>
+    </div>
+    <details>
+      <summary>Show the Work Skin code</summary>
+      <textarea class="code" id="skin-out" readonly spellcheck="false" aria-label="Work Skin CSS"></textarea>
+    </details>
+  </section>
+
+  <div class="work">
+    <div class="col-edit">
+      <section class="panel" id="mon-panel" aria-labelledby="mon-h">
+        <h2 id="mon-h"><span class="step-no">2</span> Edit a Pokémon</h2>
+        <div id="mon-editor"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="tr-h">
+        <h3 id="tr-h">Trainers</h3>
+        <div class="trainer">
+          <div class="field"><label for="opp-name">Opponent (top)</label><input type="text" id="opp-name" data-p="opp.name"></div>
+          <div class="row2">
+            <div class="field"><span class="legend">Pokémon out</span>
+              <div class="seg" role="radiogroup" aria-label="Opponent's Pokémon on the field">
+                <label><input type="radio" name="opp-count" value="1" data-count="opp"><span>1</span></label>
+                <label><input type="radio" name="opp-count" value="2" data-count="opp"><span>2</span></label>
+                <label><input type="radio" name="opp-count" value="3" data-count="opp"><span>3</span></label>
+              </div>
+            </div>
+            <div class="field"><span class="legend">Party</span><div class="balls-ed" id="balls-opp"></div></div>
+          </div>
+        </div>
+        <div class="trainer">
+          <div class="field"><label for="me-name">Hero (bottom)</label><input type="text" id="me-name" data-p="me.name"></div>
+          <div class="row2">
+            <div class="field"><span class="legend">Pokémon out</span>
+              <div class="seg" role="radiogroup" aria-label="Hero's Pokémon on the field">
+                <label><input type="radio" name="me-count" value="1" data-count="me"><span>1</span></label>
+                <label><input type="radio" name="me-count" value="2" data-count="me"><span>2</span></label>
+                <label><input type="radio" name="me-count" value="3" data-count="me"><span>3</span></label>
+              </div>
+            </div>
+            <div class="field"><span class="legend">Party</span><div class="balls-ed" id="balls-me"></div></div>
+          </div>
+        </div>
+        <p class="hint">Click a Poké Ball to change it: healthy → status problem → fainted → no Pokémon.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="field-h">
+        <h3 id="field-h">Field</h3>
+        <div class="row2">
+          <div class="field"><label for="scene">Background</label><select id="scene" data-p="scene"></select></div>
+          <div class="field"><label for="weather">Weather</label><select id="weather" data-p="weather"></select></div>
+          <div class="field"><label for="terrain">Terrain</label><select id="terrain" data-p="terrain"></select></div>
+          <div class="field"><label for="turn">Turn (0 hides it)</label><input type="number" id="turn" min="0" max="999" data-p="turn"></div>
+        </div>
+        <div class="field"><label for="field-note">Other field effects</label><input type="text" id="field-note" data-p="fieldNote" placeholder="Trick Room, Tailwind"><p class="hint">Each one becomes a badge at the top. Put a comma between them.</p></div>
+        <div class="field"><span class="legend">Sprite style</span>
+          <div class="seg" role="radiogroup" aria-label="Sprite style">
+            <label><input type="radio" name="sprite-style" value="anim" data-p="spriteStyle"><span>Animated</span></label>
+            <label><input type="radio" name="sprite-style" value="static" data-p="spriteStyle"><span>Still</span></label>
+          </div>
+          <p class="hint">Animated sprites exist for Pokémon #1–649. Newer Pokémon use still sprites either way.</p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="msg-h">
+        <h3 id="msg-h">Message box and moves</h3>
+        <div class="field"><label for="msg">Message (each line on its own line)</label><textarea id="msg" rows="2" data-p="msg"></textarea></div>
+        <label class="check" style="margin-bottom:12px"><input type="checkbox" id="show-moves" data-p="showMoves"><span>Show a move panel under the message</span></label>
+        <div class="row2">
+          <div class="field"><label for="moves-of">Moves of</label><select id="moves-of" data-p="movesOf"></select></div>
+          <div class="field"><label for="move-sel">Highlight a move</label><select id="move-sel" data-p="moveSel"></select></div>
+        </div>
+        <button type="button" class="btn-ghost btn-sm" id="what-will">Write “What will … do?”</button>
+      </section>
+
+      <section class="panel" aria-labelledby="log-h">
+        <h3 id="log-h">Battle log line (optional)</h3>
+        <p class="hint" style="margin-bottom:10px">A message box for the story between screens.</p>
+        <div class="field"><label for="log-text">What happened</label><input type="text" id="log-text" data-l="text"></div>
+        <div class="row2">
+          <div class="field"><label for="log-eff">Effectiveness</label>
+            <select id="log-eff" data-l="eff">
+              <option value="">Say nothing</option>
+              <option value="super">It's super effective!</option>
+              <option value="weak">It's not very effective…</option>
+              <option value="immune">It doesn't affect …</option>
+              <option value="ohko">It's a one-hit KO!</option>
+            </select>
+          </div>
+          <div class="field"><span class="legend">&nbsp;</span><label class="check"><input type="checkbox" id="log-crit" data-l="crit"><span>A critical hit!</span></label></div>
+          <div class="field"><label for="log-target">Whose HP changes</label><select id="log-target" data-l="target"></select></div>
+          <div class="field"><label for="log-delta">Change (−88 = damage)</label><input type="number" id="log-delta" data-l="delta"></div>
+        </div>
+        <div class="log-preview" id="workskin-log"><div id="log-preview"></div></div>
+        <div class="code-bar">
+          <button type="button" class="btn" id="copy-log">Copy log line</button>
+          <button type="button" class="btn-ghost" id="apply-log">Apply to the HP bar</button>
+          <span class="status" id="log-status" aria-live="polite"></span>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel board-panel" aria-labelledby="board-h">
+      <h2 id="board-h">Live preview</h2>
+      <p class="hint">Click a Pokémon or its HP box to edit it, a Poké Ball to change it, or the message box to rewrite it. Point at a Pokémon to see its info panel, just like readers will.</p>
+      <div id="workskin" class="preview"><div id="preview"></div></div>
+    </section>
+
+    <section class="panel code-panel" aria-labelledby="code-h">
+      <h2 id="code-h"><span class="step-no">3</span> Copy into your chapter</h2>
+      <ol>
+        <li>In your chapter's editor on AO3, switch to <b>HTML</b> (not Rich Text).</li>
+        <li>Paste the battle screen where you want it in the story, then preview or post.</li>
+      </ol>
+      <div class="code-bar">
+        <button type="button" class="btn" id="copy-board">Copy battle code</button>
+        <span class="status" id="board-status" aria-live="polite"></span>
+      </div>
+      <textarea class="code" id="board-out" readonly spellcheck="false" aria-label="Battle code for AO3"></textarea>
+      <details id="load-box">
+        <summary>Edit a battle you made before</summary>
+        <p class="hint" style="margin-bottom:8px">Paste a battle screen's code here (for example, copied back out of your chapter's HTML) to keep editing it, such as for the next turn.</p>
+        <textarea id="load-in" rows="5" spellcheck="false" aria-label="Battle code to load"></textarea>
+        <div class="code-bar" style="margin-top:8px">
+          <button type="button" class="btn" id="load-btn">Load this battle</button>
+          <span class="hint" id="load-status" aria-live="polite"></span>
+        </div>
+      </details>
+      <p class="hint" style="margin-top:12px">Your battle is saved in this browser as you work. Pokémon, move details and sprites come from PokéAPI, a free Pokémon database.</p>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (s, el) { return (el || document).querySelector(s); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
+  var clampInt = function (v, lo, hi) { var n = parseInt(v, 10); if (isNaN(n)) n = lo; return Math.max(lo, Math.min(hi, n)); };
+  var cap = function (s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
+  var prettySlug = function (s) { return String(s || "").split("-").map(cap).join(" "); };
+
+  /* ---------- Vocabulary ---------- */
+  var TYPES = ["normal", "fire", "water", "electric", "grass", "ice", "fighting", "poison", "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy"];
+  var STATUSES = [["", "None"], ["par", "PAR – paralysis"], ["brn", "BRN – burn"], ["psn", "PSN – poison"], ["tox", "TOX – bad poison"], ["slp", "SLP – sleep"], ["frz", "FRZ – freeze"]];
+  var ST_LABEL = { par: "PAR", brn: "BRN", psn: "PSN", tox: "TOX", slp: "SLP", frz: "FRZ", fnt: "FNT" };
+  var SCENES = [["grass", "Grass field"], ["forest", "Forest"], ["cave", "Cave"], ["water", "Water"], ["beach", "Beach"], ["snow", "Snowfield"],
+    ["desert", "Desert"], ["night", "Night"], ["gym", "Gym / indoors"], ["stadium", "Stadium"], ["volcano", "Volcano"]];
+  var WEATHER = { "": ["No weather", ""], sun: ["Harsh sunlight", "☀"], rain: ["Rain", "🌧"], sand: ["Sandstorm", "🌪"], snow: ["Snow", "❄"],
+    hail: ["Hail", "🧊"], fog: ["Fog", "🌫"], wind: ["Strong winds", "🌬"] };
+  var TERRAIN = { "": ["No terrain", ""], electric: ["Electric Terrain", "⚡"], grassy: ["Grassy Terrain", "🌿"], misty: ["Misty Terrain", "✨"], psychic: ["Psychic Terrain", "🔮"] };
+  var BALLS = ["ok", "st", "fnt", "none"];
+  var BALL_NAME = { ok: "healthy", st: "status problem", fnt: "fainted", none: "no Pokémon" };
+  var EFF = { super: "It's super effective!", weak: "It's not very effective…", ohko: "It's a one-hit KO!" };
+  var SIDES = ["opp", "me"];
+  /* How much bigger than the source picture each side's sprites are drawn (yours are closer to the camera). */
+  var SCALE = { opp: 1.7, me: 2.2 };
+
+  function newMove() { return { name: "", type: "normal", pp: "", ppMax: "" }; }
+  function newMon(side, empty) {
+    return { empty: !!empty, dex: 0, species: "", name: "", gender: "", level: 50, hp: 100, maxHp: 100, autoHp: false, baseHp: 0,
+      status: "", types: ["normal", ""], ability: "", item: "", abilities: [], shiny: false,
+      sp: null, sprite: "", custom: false, spriteW: 0, spriteFor: "", size: 100,
+      moves: [newMove(), newMove(), newMove(), newMove()], chips: "", notes: "",
+      showHp: side === "me", hover: true, sumMoves: true, target: false };
+  }
+  function emptyState() {
+    return { v: 1, scene: "grass", weather: "", terrain: "", fieldNote: "", turn: 1, spriteStyle: "anim",
+      opp: { name: "Rival", party: ["ok", "ok", "ok", "ok", "ok", "ok"], mons: [newMon("opp", true)] },
+      me: { name: "Hero", party: ["ok", "ok", "ok", "ok", "ok", "ok"], mons: [newMon("me", true)] },
+      msg: "", showMoves: false, movesOf: "me-0", moveSel: -1,
+      log: { text: "", eff: "", crit: false, target: "opp-0", delta: 0 } };
+  }
+
+  /* PokéAPI sprite sets for the example, so it works without a lookup. */
+  function spriteSet(id, female) {
+    var b = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/", a = b + "versions/generation-v/black-white/animated/";
+    var set = function (root, ext) {
+      var o = { front_default: root + id + ext, back_default: root + "back/" + id + ext, front_shiny: root + "shiny/" + id + ext, back_shiny: root + "back/shiny/" + id + ext };
+      if (female) { o.front_female = root + "female/" + id + ext; o.back_female = root + "back/female/" + id + ext; o.front_shiny_female = root + "shiny/female/" + id + ext; o.back_shiny_female = root + "back/shiny/female/" + id + ext; }
+      return o;
+    };
+    return { still: set(b, ".png"), anim: set(a, ".gif") };
+  }
+  function exampleState() {
+    var s = emptyState();
+    s.scene = "stadium"; s.turn = 7; s.weather = ""; s.terrain = ""; s.fieldNote = "";
+    var chomp = Object.assign(newMon("opp"), {
+      dex: 445, species: "Garchomp", gender: "f", level: 88, hp: 202, maxHp: 315, baseHp: 108, autoHp: true,
+      types: ["dragon", "ground"], ability: "Rough Skin", abilities: ["Sand Veil", "Rough Skin"], item: "Life Orb", sp: spriteSet(445, true),
+      moves: [{ name: "Earthquake", type: "ground", pp: 8, ppMax: 10 }, { name: "Dragon Claw", type: "dragon", pp: 15, ppMax: 15 },
+        { name: "Swords Dance", type: "normal", pp: 19, ppMax: 20 }, { name: "Fire Fang", type: "fire", pp: 15, ppMax: 15 }],
+      chips: "Atk +2", notes: "Cynthia's ace. Rough Skin hurts anything that touches her.", showHp: false, target: true });
+    var pika = Object.assign(newMon("me"), {
+      dex: 25, species: "Pikachu", gender: "m", level: 88, hp: 41, maxHp: 186, baseHp: 35, autoHp: true,
+      types: ["electric", ""], ability: "Static", abilities: ["Static", "Lightning Rod"], item: "Light Ball", sp: spriteSet(25, true),
+      moves: [{ name: "Thunderbolt", type: "electric", pp: 11, ppMax: 15 }, { name: "Quick Attack", type: "normal", pp: 27, ppMax: 30 },
+        { name: "Iron Tail", type: "steel", pp: 14, ppMax: 15 }, { name: "Volt Tackle", type: "electric", pp: 15, ppMax: 15 }],
+      status: "par", chips: "Spe −1" });
+    s.opp = { name: "Cynthia", party: ["ok", "ok", "fnt", "ok", "fnt", "ok"], mons: [chomp] };
+    s.me = { name: "Red", party: ["ok", "ok", "st", "fnt", "ok", "ok"], mons: [pika] };
+    s.msg = "What will Pikachu do?"; s.showMoves = true; s.movesOf = "me-0"; s.moveSel = 2;
+    s.log = { text: "Pikachu used Iron Tail!", eff: "", crit: true, target: "opp-0", delta: -77 };
+    SIDES.forEach(function (side) { s[side].mons.forEach(function (m) { autoSprite(m, side, s); }); });
+    return s;
+  }
+
+  /* ---------- Sprites ---------- */
+  /* Picks the right picture from the sprite set: facing (back for your side), shiny, female,
+     animated or still. Falls back step by step when a picture doesn't exist. */
+  function autoSprite(m, side, s) {
+    s = s || state;
+    if (m.custom || !m.sp) return;
+    var facing = side === "me" ? ["back", "front"] : ["front"], sets = s.spriteStyle === "anim" ? [m.sp.anim, m.sp.still] : [m.sp.still];
+    var url = "";
+    facing.some(function (f) {
+      var keys = [];
+      if (m.shiny && m.gender === "f") keys.push(f + "_shiny_female");
+      if (m.shiny) keys.push(f + "_shiny");
+      if (m.gender === "f") keys.push(f + "_female");
+      keys.push(f + "_default");
+      return sets.some(function (set) { return set && keys.some(function (k) { if (set[k]) { url = set[k]; return true; } return false; }); });
+    });
+    m.sprite = url;
+  }
+  function spriteWidth(m, side) { return Math.max(24, Math.round((m.spriteW || 96) * SCALE[side] * (m.size || 100) / 100)); }
+
+  /* ---------- Helpers ---------- */
+  function monAt(key, s) { s = s || state; var p = String(key || "").split("-"), t = s[p[0]]; return t && t.mons[+p[1]] || null; }
+  function sideOf(key) { return String(key).split("-")[0]; }
+  function dispName(m) { return m.name || m.species || "???"; }
+  function hpPct(m) {
+    if (!m.maxHp) return 0;
+    var p = Math.round(m.hp * 100 / m.maxHp);
+    if (m.hp > 0 && p < 1) p = 1;
+    if (m.hp < m.maxHp && p > 99) p = 99;
+    return Math.max(0, Math.min(100, p));
+  }
+  function hpCls(p) { return p > 50 ? "pkb-hp-hi" : p > 20 ? "pkb-hp-mid" : "pkb-hp-low"; }
+  function fainted(m) { return !m.empty && m.maxHp > 0 && m.hp <= 0; }
+  function statusOf(m) { return fainted(m) ? "fnt" : m.status; }
+  function genderHTML(m) { return m.gender === "m" ? '<span class="pkb-g pkb-g-m">♂</span>' : m.gender === "f" ? '<span class="pkb-g pkb-g-f">♀</span>' : ""; }
+  function splitList(t) { return String(t || "").split(/[,;\n]/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  function chipCls(t) { return /\+\s*\d/.test(t) ? " pkb-chip-up" : /(^|\s)[−–-]\s*\d/.test(t) ? " pkb-chip-down" : ""; }
+  function typeOk(t) { return TYPES.indexOf(t) >= 0 ? t : "normal"; }
+  function fieldMons(s) {
+    s = s || state; var out = [];
+    SIDES.forEach(function (side) { s[side].mons.forEach(function (m, i) { if (!m.empty) out.push([side + "-" + i, m]); }); });
+    return out;
+  }
+  function calcHp(base, lv) { if (!base) return 0; if (base === 1) return 1; return Math.floor((2 * base + 31) * lv / 100) + lv + 10; }
+
+  /* ---------- Building the AO3 code ---------- */
+  function ballsHTML(side, preview) {
+    return '<span class="pkb-balls">' + state[side].party.map(function (b, i) {
+      return '<span class="pkb-ball' + (b !== "ok" ? " pkb-ball-" + b : "") + '"' + (preview ? ' data-ball="' + side + "-" + i + '" title="Pokémon ' + (i + 1) + ": " + BALL_NAME[b] + '"' : "") + ">&nbsp;</span>";
+    }).join("") + "</span>";
+  }
+  function trainerHTML(side, preview) { return '<span class="pkb-tname">' + esc(state[side].name) + "</span> " + ballsHTML(side, preview); }
+  function badgesHTML() {
+    var B = [];
+    if (state.weather && WEATHER[state.weather]) B.push('<span class="pkb-badge pkb-wx-' + state.weather + '">' + WEATHER[state.weather][1] + " " + WEATHER[state.weather][0] + "</span>");
+    if (state.terrain && TERRAIN[state.terrain]) B.push('<span class="pkb-badge pkb-tr-' + state.terrain + '">' + TERRAIN[state.terrain][1] + " " + TERRAIN[state.terrain][0] + "</span>");
+    splitList(state.fieldNote).forEach(function (n) { B.push('<span class="pkb-badge">' + esc(n) + "</span>"); });
+    if (state.turn > 0) B.push('<span class="pkb-badge pkb-turn">Turn ' + state.turn + "</span>");
+    return B.join(" ") || "&nbsp;";
+  }
+  function selAttrs(key, preview, sel, base) {
+    if (!preview) return { cls: "", attrs: "" };
+    return { cls: sel === key ? " is-sel" : "", attrs: ' data-m="' + key + '" tabindex="0"' };
+  }
+  function boxHTML(m, side, key, preview, sel) {
+    var a = selAttrs(key, preview, sel), p = hpPct(m), st = statusOf(m), g = genderHTML(m);
+    var L = ['<div class="pkb-box' + (m.target ? " pkb-tgt" : "") + a.cls + '"' + a.attrs + ">",
+      '<span class="pkb-nm"><span class="pkb-lv">Lv' + m.level + "</span>" + esc(dispName(m)) + (g ? " " + g : "") + "</span>",
+      '<span class="pkb-hp"><span class="pkb-hptag">HP</span><span class="pkb-track"><span class="pkb-fill ' + hpCls(p) + " pkb-w" + p + '">&nbsp;</span></span></span>'];
+    if (st || m.showHp) {
+      L.push('<span class="pkb-row2">' + (st ? '<span class="pkb-st pkb-st-' + st + '">' + ST_LABEL[st] + "</span>" : "") +
+        (m.showHp ? '<span class="pkb-hpn">' + m.hp + " / " + m.maxHp + "</span>" : "&nbsp;") + "</span>");
+    }
+    var chips = splitList(m.chips);
+    if (chips.length) L.push('<span class="pkb-chips">' + chips.map(function (c) { return '<span class="pkb-chip' + chipCls(c) + '">' + esc(c) + "</span>"; }).join(" ") + "</span>");
+    L.push("</div>");
+    return L.join("\n");
+  }
+  function sumHTML(m) {
+    var st = statusOf(m), g = genderHTML(m);
+    var L = ['<div class="pkb-sum">'];
+    var types = m.types.filter(Boolean).map(function (t) { return '<span class="pkb-type pkb-t-' + t + '">' + cap(t) + "</span>"; }).join(" ");
+    L.push('<span class="pkb-sum-head"><span class="pkb-sum-name">' + esc(dispName(m)) + "</span>" + (g ? " " + g : "") + ' <span class="pkb-sum-lv">Lv' + m.level + "</span> " + types + "</span>");
+    if (m.name && m.species && m.name !== m.species) L.push('<span class="pkb-sum-sp">' + esc(m.species) + "</span>");
+    L.push('<span class="pkb-sum-line"><span class="pkb-k">HP</span> <span class="pkb-sum-hp">' + (m.showHp ? m.hp + " / " + m.maxHp : hpPct(m) + "%") + "</span>" +
+      (st ? ' <span class="pkb-st pkb-st-' + st + '">' + ST_LABEL[st] + "</span>" : "") + "</span>");
+    if (m.ability || m.item) L.push('<span class="pkb-sum-line">' +
+      (m.ability ? '<span class="pkb-k">Ability</span> <span class="pkb-abil">' + esc(m.ability) + "</span> " : "") +
+      (m.item ? '<span class="pkb-k pkb-item">Item</span> <span class="pkb-itm">' + esc(m.item) + "</span>" : "") + "</span>");
+    var mv = m.moves.filter(function (x) { return x.name; });
+    if (m.sumMoves && mv.length) L.push('<span class="pkb-sum-moves">' + mv.map(function (x) { return '<span class="pkb-mv pkb-t-' + typeOk(x.type) + '">' + esc(x.name) + "</span>"; }).join(" ") + "</span>");
+    if (m.notes) L.push('<span class="pkb-sum-text">' + esc(m.notes.replace(/\s*\n\s*/g, " ")) + "</span>");
+    L.push("</div>");
+    return L.join("\n");
+  }
+  function monHTML(m, side, key, preview, sel) {
+    var a = selAttrs(key, preview, sel);
+    if (m.empty) return '<div class="pkb-mon pkb-gone' + a.cls + '"' + a.attrs + ">" + (preview ? '<span class="pkb-add">+ Add a Pokémon</span>' : "&nbsp;") + "</div>";
+    var cls = ["pkb-mon"];
+    if (fainted(m)) cls.push("pkb-fnt");
+    if (m.target) cls.push("pkb-tgt");
+    if (m.dex) cls.push("pkb-dex-" + m.dex);
+    var L = ['<div class="' + cls.join(" ") + a.cls + '"' + a.attrs + ">"];
+    if (m.target) L.push('<span class="pkb-mark">▼</span>');
+    if (m.sprite) L.push('<img src="' + esc(m.sprite) + '" alt="' + esc(dispName(m)) + '" width="' + spriteWidth(m, side) + '">');
+    else L.push('<span class="pkb-nosprite">?</span>');
+    L.push('<span class="pkb-base">&nbsp;</span>');
+    if (m.hover) L.push(sumHTML(m));
+    L.push("</div>");
+    return L.join("\n");
+  }
+  function rowHTML(side, preview, sel) {
+    var t = state[side], n = t.mons.length;
+    var boxes = t.mons.map(function (m, i) { return m.empty ? "" : boxHTML(m, side, side + "-" + i, preview, sel); }).filter(Boolean).join("\n") || "&nbsp;";
+    var sprites = t.mons.map(function (m, i) { return monHTML(m, side, side + "-" + i, preview, sel); }).join("\n");
+    return side === "opp"
+      ? '<tr class="pkb-opp pkb-n' + n + '">\n<td class="pkb-boxes">\n' + boxes + '\n</td>\n<td class="pkb-sprites">\n' + sprites + "\n</td>\n</tr>"
+      : '<tr class="pkb-me pkb-n' + n + '">\n<td class="pkb-sprites">\n' + sprites + '\n</td>\n<td class="pkb-boxes">\n' + boxes + "\n</td>\n</tr>";
+  }
+  function movesShown() { var m = monAt(state.movesOf); return state.showMoves && m && !m.empty ? m : null; }
+  function movesHTML(m) {
+    var cell = function (mv, i) {
+      if (!mv.name) return '<span class="pkb-move pkb-move-none"><span class="pkb-mname">–</span><span class="pkb-minfo">&nbsp;</span></span>';
+      var pp = mv.pp === "" ? mv.ppMax : mv.pp, cls = "pkb-move pkb-t-" + typeOk(mv.type) + (i === state.moveSel ? " pkb-move-sel" : "") + (mv.ppMax !== "" && +pp === 0 ? " pkb-move-out" : "");
+      return '<span class="' + cls + '"><span class="pkb-mname">' + esc(mv.name) + '</span><span class="pkb-minfo">' +
+        (mv.ppMax !== "" ? '<span class="pkb-mpp">PP ' + pp + "/" + mv.ppMax + "</span>" : "") + '<span class="pkb-mtype">' + cap(typeOk(mv.type)) + "</span></span></span>";
+    };
+    return '<table class="pkb-moves pkb-of-' + state.movesOf + '">\n<tr><td>' + cell(m.moves[0], 0) + "</td><td>" + cell(m.moves[1], 1) + "</td></tr>\n" +
+      "<tr><td>" + cell(m.moves[2], 2) + "</td><td>" + cell(m.moves[3], 3) + "</td></tr>\n</table>";
+  }
+  function boardHTML(preview, sel) {
+    var mv = movesShown();
+    var lines = String(state.msg || "").split("\n").map(function (x) { return x.trim(); }).filter(Boolean);
+    var L = ['<div class="pkb-battle' + (mv ? " pkb-with-moves" : "") + '">',
+      '<table class="pkb-head"><tr><td>' + trainerHTML("opp", preview) + "</td><td>" + badgesHTML() + "</td></tr></table>",
+      '<div class="pkb-scroll"><div class="pkb-scene pkb-bg-' + state.scene + '">',
+      '<table class="pkb-field' + (state.weather ? " pkb-sky-" + state.weather : "") + '">',
+      rowHTML("opp", preview, sel), rowHTML("me", preview, sel),
+      "</table>", "</div></div>",
+      '<div class="pkb-bar">' + trainerHTML("me", preview) + "</div>",
+      '<div class="pkb-msg"' + (preview ? ' data-msg="1" tabindex="0"' : "") + ">" +
+        (lines.length ? lines.map(function (x) { return '<span class="pkb-line">' + esc(x) + "</span>"; }).join("\n") : "&nbsp;") + "</div>"];
+    if (mv) L.push(movesHTML(mv));
+    L.push("</div>");
+    return L.join("\n");
+  }
+
+  function logResult() {
+    var m = monAt(state.log.target), d = Number(state.log.delta) || 0;
+    if (!m || m.empty) return null;
+    return { m: m, before: m.hp, after: Math.max(0, Math.min(m.maxHp, m.hp + d)), d: d };
+  }
+  function logHTML() {
+    var x = logResult(), L = [];
+    var heal = x && x.d > 0;
+    L.push('<div class="pkb-log' + (heal ? " pkb-log-heal" : "") + '">');
+    if (state.log.text) L.push('<span class="pkb-line">' + esc(state.log.text) + "</span>");
+    if (state.log.crit) L.push('<span class="pkb-line">A critical hit!</span>');
+    if (state.log.eff === "immune") L.push('<span class="pkb-line">It doesn\'t affect ' + esc(x ? dispName(x.m) : "the target") + "…</span>");
+    else if (EFF[state.log.eff]) L.push('<span class="pkb-line">' + EFF[state.log.eff] + "</span>");
+    if (x && x.d !== 0) {
+      L.push('<span class="pkb-log-hp">' + esc(dispName(x.m)) + " HP " + x.before + " → " + x.after + ' <span class="pkb-delta">' + (x.d < 0 ? "−" : "+") + Math.abs(x.after - x.before) + "</span></span>");
+      if (x.after === 0 && x.before > 0) L.push('<span class="pkb-line">' + esc(dispName(x.m)) + " fainted!</span>");
+    }
+    if (L.length === 1) L.push("&nbsp;");
+    L.push("</div>");
+    return L.join("\n");
+  }
+
+  /* ---------- Reading a battle back in ---------- */
+  var txt = function (el) { return el ? el.textContent.replace(/\s+/g, " ").trim() : ""; };
+  function classVal(el, prefix, list) {
+    if (!el) return null;
+    for (var i = 0; i < el.classList.length; i++) {
+      var c = el.classList[i];
+      if (c.indexOf(prefix) === 0) { var v = c.slice(prefix.length); if (!list || list.indexOf(v) >= 0) return v; }
+    }
+    return null;
+  }
+  function parseMon(el, box, side) {
+    var m = newMon(side);
+    var dex = classVal(el, "pkb-dex-"); if (dex) m.dex = +dex;
+    m.target = el.classList.contains("pkb-tgt");
+    var img = el.querySelector("img");
+    if (img) {
+      m.sprite = img.getAttribute("src") || ""; m.custom = true;
+      var w = +img.getAttribute("width"); if (w) { m.spriteW = Math.round(w / SCALE[side]); m.spriteFor = m.sprite; }
+    }
+    var shown = "", pct = null;
+    if (box) {
+      var nm = box.querySelector(".pkb-nm");
+      if (nm) {
+        var c = nm.cloneNode(true);
+        Array.prototype.forEach.call(c.querySelectorAll(".pkb-lv, .pkb-g"), function (x) { x.remove(); });
+        shown = txt(c);
+        m.level = clampInt(txt(nm.querySelector(".pkb-lv")).replace(/\D/g, ""), 1, 100);
+      }
+      var g = box.querySelector(".pkb-g"); m.gender = g ? (g.classList.contains("pkb-g-f") ? "f" : "m") : "";
+      var f = box.querySelector(".pkb-fill"), w2 = classVal(f, "pkb-w"); if (w2 !== null) pct = +w2;
+      var st = classVal(box.querySelector(".pkb-st"), "pkb-st-"); if (st && st !== "fnt") m.status = st;
+      var hn = txt(box.querySelector(".pkb-hpn")).match(/(\d+)\s*\/\s*(\d+)/);
+      m.showHp = !!hn;
+      if (hn) { m.hp = +hn[1]; m.maxHp = +hn[2]; }
+      m.chips = Array.prototype.map.call(box.querySelectorAll(".pkb-chip"), txt).join(", ");
+    }
+    var sum = el.querySelector(".pkb-sum");
+    m.hover = !!sum;
+    if (sum) {
+      shown = txt(sum.querySelector(".pkb-sum-name")) || shown;
+      var sp = txt(sum.querySelector(".pkb-sum-sp"));
+      if (sp) { m.name = shown; m.species = sp; } else m.species = shown;
+      var types = Array.prototype.map.call(sum.querySelectorAll(".pkb-sum-head .pkb-type"), function (t) { return classVal(t, "pkb-t-", TYPES); }).filter(Boolean);
+      if (types.length) m.types = [types[0], types[1] || ""];
+      var hp = txt(sum.querySelector(".pkb-sum-hp")).match(/(\d+)\s*\/\s*(\d+)/);
+      if (hp) { m.hp = +hp[1]; m.maxHp = +hp[2]; }
+      m.ability = txt(sum.querySelector(".pkb-abil"));
+      m.item = txt(sum.querySelector(".pkb-itm"));
+      var mvs = sum.querySelectorAll(".pkb-mv");
+      m.sumMoves = mvs.length > 0;
+      Array.prototype.forEach.call(mvs, function (x, i) { if (i < 4) m.moves[i] = { name: txt(x), type: classVal(x, "pkb-t-", TYPES) || "normal", pp: "", ppMax: "" }; });
+      m.notes = txt(sum.querySelector(".pkb-sum-text"));
+    } else m.species = shown;
+    if (pct !== null && !m.showHp && !(sum && /\//.test(txt(sum.querySelector(".pkb-sum-hp"))))) { m.maxHp = 100; m.hp = pct; }
+    return m;
+  }
+  function parseBoard(html) {
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    var b = doc.querySelector(".pkb-battle");
+    if (!b || !b.querySelector(".pkb-field")) throw new Error("not a battle");
+    var s = emptyState();
+    var head = b.querySelector(".pkb-head"), bar = b.querySelector(".pkb-bar");
+    [["opp", head], ["me", bar]].forEach(function (p) {
+      if (!p[1]) return;
+      s[p[0]].name = txt(p[1].querySelector(".pkb-tname")) || s[p[0]].name;
+      var balls = p[1].querySelectorAll(".pkb-ball");
+      if (balls.length) s[p[0]].party = Array.prototype.map.call(balls, function (x) { return classVal(x, "pkb-ball-", BALLS) || "ok"; }).slice(0, 6);
+      while (s[p[0]].party.length < 6) s[p[0]].party.push("none");
+    });
+    s.turn = 0; var notes = [];
+    Array.prototype.forEach.call(b.querySelectorAll(".pkb-head .pkb-badge"), function (x) {
+      if (x.classList.contains("pkb-turn")) { s.turn = clampInt(txt(x).replace(/\D/g, ""), 0, 999); return; }
+      var wx = classVal(x, "pkb-wx-"); if (wx && WEATHER[wx]) { s.weather = wx; return; }
+      var tr = classVal(x, "pkb-tr-"); if (tr && TERRAIN[tr]) { s.terrain = tr; return; }
+      notes.push(txt(x));
+    });
+    s.fieldNote = notes.join(", ");
+    var sc = classVal(b.querySelector(".pkb-scene"), "pkb-bg-"); if (sc) s.scene = sc;
+    SIDES.forEach(function (side) {
+      var row = b.querySelector("tr.pkb-" + side); if (!row) return;
+      var boxes = row.querySelectorAll(".pkb-boxes .pkb-box"), bi = 0;
+      var mons = Array.prototype.map.call(row.querySelectorAll(".pkb-sprites .pkb-mon"), function (el) {
+        if (el.classList.contains("pkb-gone")) return newMon(side, true);
+        return parseMon(el, boxes[bi++], side);
+      });
+      if (mons.length) s[side].mons = mons.slice(0, 3);
+    });
+    s.msg = Array.prototype.map.call(b.querySelectorAll(".pkb-msg .pkb-line"), txt).join("\n");
+    var mt = b.querySelector(".pkb-moves");
+    s.showMoves = !!mt;
+    if (mt) {
+      var of = classVal(mt, "pkb-of-"); if (of && monAt(of, s)) s.movesOf = of;
+      var owner = monAt(s.movesOf, s);
+      Array.prototype.forEach.call(mt.querySelectorAll(".pkb-move"), function (x, i) {
+        if (i > 3) return;
+        if (x.classList.contains("pkb-move-sel")) s.moveSel = i;
+        if (!owner || x.classList.contains("pkb-move-none")) return;
+        var pp = txt(x.querySelector(".pkb-mpp")).match(/(\d+)\s*\/\s*(\d+)/);
+        owner.moves[i] = { name: txt(x.querySelector(".pkb-mname")), type: classVal(x, "pkb-t-", TYPES) || "normal", pp: pp ? +pp[1] : "", ppMax: pp ? +pp[2] : "" };
+      });
+    }
+    var first = fieldMons(s)[0]; s.log.target = first ? first[0] : "opp-0";
+    return s;
+  }
+
+  /* ---------- State, saving ---------- */
+  var KEY = "pkb-battle-builder-v1";
+  var state, sel = null, lookupMsg = "", lastResults = [], moveMsg = "", learnsets = {};
+  try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
+  if (!state || state.v !== 1 || !state.opp || !state.me) state = exampleState();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working without it */ } }
+
+  /* ---------- Rendering ---------- */
+  var preview = $("#preview"), boardOut = $("#board-out"), editor = $("#mon-editor");
+  function render() {
+    preview.innerHTML = boardHTML(true, sel);
+    boardOut.value = boardHTML(false);
+    $("#log-preview").innerHTML = logHTML();
+    SIDES.forEach(function (side) {
+      $("#balls-" + side).innerHTML = state[side].party.map(function (b, i) {
+        return '<button type="button" class="ball-btn b-' + b + '" data-ball="' + side + "-" + i + '" title="Pokémon ' + (i + 1) + ": " + BALL_NAME[b] + '" aria-label="Pokémon ' + (i + 1) + ": " + BALL_NAME[b] + '"></button>';
+      }).join("");
+    });
+    measureSprites();
+    save();
+  }
+
+  /* Learn each sprite's real size, so small Pokémon stay small and big ones big. */
+  function measureSprites() {
+    SIDES.forEach(function (side) {
+      state[side].mons.forEach(function (m) {
+        if (m.empty || !m.sprite || m.spriteFor === m.sprite) return;
+        var url = m.sprite, probe = new Image();
+        m.spriteFor = url;
+        probe.onload = function () { if (m.sprite === url) { m.spriteW = probe.naturalWidth; render(); } };
+        probe.onerror = function () { if (m.sprite === url) m.spriteW = 0; };
+        probe.src = url;
+      });
+    });
+  }
+
+  function opt(list, val) { return list.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(val) ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join(""); }
+  function monLabel(key) { var m = monAt(key); return state[sideOf(key)].name + ": " + (m ? dispName(m) : "?"); }
+  function fillDynamic() {
+    var fm = fieldMons();
+    if (!monAt(state.movesOf) || monAt(state.movesOf).empty) state.movesOf = (fm.filter(function (x) { return sideOf(x[0]) === "me"; })[0] || fm[0] || ["me-0"])[0];
+    $("#moves-of").innerHTML = fm.length ? opt(fm.map(function (x) { return [x[0], monLabel(x[0])]; }), state.movesOf) : '<option value="">No Pokémon on the field</option>';
+    var mm = monAt(state.movesOf);
+    $("#move-sel").innerHTML = opt([[-1, "None"]].concat([0, 1, 2, 3].map(function (i) { return [i, (i + 1) + ". " + (mm && mm.moves[i].name || "(empty)")]; })), state.moveSel);
+    if (!monAt(state.log.target) || monAt(state.log.target).empty) state.log.target = fm[0] ? fm[0][0] : "";
+    $("#log-target").innerHTML = fm.length ? opt(fm.map(function (x) { return [x[0], monLabel(x[0])]; }), state.log.target) : '<option value="">No Pokémon on the field</option>';
+  }
+  function fillInputs() {
+    $("#opp-name").value = state.opp.name; $("#me-name").value = state.me.name;
+    SIDES.forEach(function (side) {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-count="' + side + '"]'), function (r) { r.checked = +r.value === state[side].mons.length; });
+    });
+    $("#scene").innerHTML = opt(SCENES, state.scene);
+    $("#weather").innerHTML = opt(Object.keys(WEATHER).map(function (k) { return [k, (WEATHER[k][1] ? WEATHER[k][1] + " " : "") + WEATHER[k][0]]; }), state.weather);
+    $("#terrain").innerHTML = opt(Object.keys(TERRAIN).map(function (k) { return [k, (TERRAIN[k][1] ? TERRAIN[k][1] + " " : "") + TERRAIN[k][0]]; }), state.terrain);
+    $("#turn").value = state.turn; $("#field-note").value = state.fieldNote;
+    Array.prototype.forEach.call(document.querySelectorAll('[name="sprite-style"]'), function (r) { r.checked = r.value === state.spriteStyle; });
+    $("#msg").value = state.msg; $("#show-moves").checked = state.showMoves;
+    $("#log-text").value = state.log.text; $("#log-eff").value = state.log.eff; $("#log-crit").checked = !!state.log.crit; $("#log-delta").value = state.log.delta;
+    fillDynamic();
+  }
+
+  /* ---------- Pokémon editor ---------- */
+  function check(id, f, on, label, disabled) {
+    return '<label class="check"><input type="checkbox" id="' + id + '" data-f="' + f + '" data-struct' + (on ? " checked" : "") + (disabled ? " disabled" : "") + "><span>" + label + "</span></label>";
+  }
+  function seg(name, f, items, val) {
+    return '<div class="seg" role="radiogroup">' + items.map(function (it) {
+      return '<label><input type="radio" name="' + name + '" id="' + name + "-" + (it[0] || "none") + '" value="' + it[0] + '" data-f="' + f + '" data-struct' + (it[0] === val ? " checked" : "") + "><span>" + it[1] + "</span></label>";
+    }).join("") + "</div>";
+  }
+  function cur() { return sel ? monAt(sel) : null; }
+  function slotTitle(k) {
+    var side = sideOf(k), i = +k.split("-")[1], n = state[side].mons.length;
+    return state[side].name + "’s Pokémon" + (n > 1 ? ", " + (["left", "middle", "right"][n === 2 && i === 1 ? 2 : i]) + " of " + n : "");
+  }
+  function editorHTML() {
+    var m = cur();
+    if (!m) return '<p class="empty-note">Click a Pokémon (or an empty slot) on the battle screen to put a Pokémon there or change it.</p>';
+    var side = sideOf(sel), h = '<p class="zone-title">' + esc(slotTitle(sel)) + "</p>";
+    h += '<div class="field"><span class="legend">What’s here</span>' + seg("f-empty", "empty", [["no", "A Pokémon"], ["yes", "Nothing"]], m.empty ? "yes" : "no") + "</div>";
+    if (m.empty) return h + '<p class="hint">An empty slot keeps the space on the field, for when a Pokémon has fainted and left.</p>';
+    h += '<div class="field"><label for="f-species">Pokémon</label><div class="inline"><input type="text" id="f-species" data-f="species" autocomplete="off" placeholder="Garchomp" value="' + esc(m.species) + '">' +
+      '<button type="button" class="btn" id="lookup-btn">Look up</button></div>' +
+      '<div class="lookup-out" id="lookup-out" aria-live="polite">' + lookupMsg + "</div>" +
+      '<p class="hint">Look up fills in its types, abilities, HP and sprite. You can change any detail after.</p></div>';
+    h += '<div class="row2"><div class="field"><label for="f-name">Nickname (optional)</label><input type="text" id="f-name" data-f="name" value="' + esc(m.name) + '"></div>' +
+      '<div class="field"><span class="legend">Gender</span>' + seg("f-gender", "gender", [["m", "♂"], ["f", "♀"], ["", "None"]], m.gender) + "</div></div>";
+    h += '<div class="row3"><div class="field"><label for="f-level">Level</label><input type="number" id="f-level" min="1" max="100" data-f="level" value="' + m.level + '"></div>' +
+      '<div class="field"><label for="f-hp">HP</label><input type="number" id="f-hp" min="0" max="9999" data-f="hp" value="' + m.hp + '"></div>' +
+      '<div class="field"><label for="f-maxhp">Max HP</label><input type="number" id="f-maxhp" min="1" max="9999" data-f="maxHp" value="' + m.maxHp + '"></div></div>';
+    h += '<div class="btn-row"><button type="button" class="btn-ghost btn-sm" id="hp-full">Full HP</button><button type="button" class="btn-ghost btn-sm" id="hp-half">Half</button><button type="button" class="btn-ghost btn-sm" id="hp-faint">Faint</button></div>';
+    h += '<div class="row2"><div class="field"><label for="f-status">Status</label><select id="f-status" data-f="status">' + opt(STATUSES, m.status) + "</select></div>" +
+      '<div class="field"><span class="legend">Types</span><div class="row2"><select id="f-type0" data-f="type0" aria-label="First type">' + opt(TYPES.map(function (t) { return [t, cap(t)]; }), m.types[0]) + "</select>" +
+      '<select id="f-type1" data-f="type1" aria-label="Second type">' + opt([["", "–"]].concat(TYPES.map(function (t) { return [t, cap(t)]; })), m.types[1]) + "</select></div></div></div>";
+    h += '<div class="row2"><div class="field"><label for="f-ability">Ability</label><input type="text" id="f-ability" data-f="ability" list="abil-dl" value="' + esc(m.ability) + '">' +
+      '<datalist id="abil-dl">' + (m.abilities || []).map(function (a) { return '<option value="' + esc(a) + '">'; }).join("") + "</datalist></div>" +
+      '<div class="field"><label for="f-item">Held item</label><input type="text" id="f-item" data-f="item" value="' + esc(m.item) + '"></div></div>';
+    h += '<div class="field"><label for="f-chips">Stat changes and effects</label><input type="text" id="f-chips" data-f="chips" placeholder="Atk +2, Confused, Leech Seed" value="' + esc(m.chips) + '">' +
+      '<p class="hint">Shown as tags under the HP bar. Put a comma between them; “+2” tags turn red, “−1” tags blue.</p></div>';
+
+    /* Moves */
+    h += '<p class="sub">Moves</p><div class="mv-grid"><span class="mv-h">Name</span><span class="mv-h">Type</span><span class="mv-h">PP</span><span class="mv-h">Max</span>';
+    m.moves.forEach(function (mv, i) {
+      h += '<input type="text" id="mv-' + i + '-name" data-mv="' + i + '.name" list="learn-dl" autocomplete="off" aria-label="Move ' + (i + 1) + ' name" value="' + esc(mv.name) + '">' +
+        '<select id="mv-' + i + '-type" data-mv="' + i + '.type" aria-label="Move ' + (i + 1) + ' type">' + opt(TYPES.map(function (t) { return [t, cap(t)]; }), mv.type) + "</select>" +
+        '<input type="number" id="mv-' + i + '-pp" data-mv="' + i + '.pp" min="0" max="64" aria-label="Move ' + (i + 1) + ' PP left" value="' + esc(mv.pp) + '">' +
+        '<input type="number" id="mv-' + i + '-ppMax" data-mv="' + i + '.ppMax" min="0" max="64" aria-label="Move ' + (i + 1) + ' max PP" value="' + esc(mv.ppMax) + '">';
+    });
+    h += '</div><datalist id="learn-dl">' + (learnsets[m.dex] || []).map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist>";
+    h += '<p class="hint" id="mv-status" style="margin:6px 0 12px">' + (moveMsg || "Type a move’s name and press Enter (or click away) to fill in its type and PP.") + "</p>";
+
+    /* Sprite */
+    h += '<p class="sub">Sprite</p>';
+    h += '<div class="checks">' + check("f-shiny", "shiny", m.shiny, "Shiny") + "</div>";
+    h += '<div class="field"><label for="f-sprite">Picture link</label><div class="pic-row"><div style="display:grid;gap:4px;min-width:0">' +
+      '<input type="url" id="f-sprite" data-f="sprite" placeholder="https://i.imgur.com/abc123.png" value="' + esc(m.sprite) + '">' +
+      '<p class="hint" id="img-status"></p></div><img id="img-thumb" alt="" hidden></div>' +
+      '<p class="hint">' + (m.custom ? "Your own picture. " : m.sp ? "Picked automatically from PokéAPI’s sprites. Paste a different direct link to use your own picture. " : "Look up the Pokémon to get its sprite, or paste a direct link to a picture (it usually ends in .png or .gif). ") + "</p>" +
+      (m.custom && (m.sp || m.dex) ? '<button type="button" class="btn-ghost btn-sm" id="auto-sprite" style="justify-self:start">Use the automatic sprite</button>' : "") + "</div>";
+    h += '<div class="field"><label for="f-size">Size on screen</label><select id="f-size" data-f="size">' + opt([[60, "Tiny (60%)"], [80, "Small (80%)"], [100, "Normal"], [125, "Large (125%)"], [150, "Huge (150%)"]], m.size) + "</select></div>";
+
+    /* Info panel */
+    h += '<p class="sub">Info panel and display</p>';
+    h += '<div class="field"><label for="f-notes">Notes in the info panel</label><textarea id="f-notes" rows="2" data-f="notes">' + esc(m.notes) + "</textarea></div>";
+    h += '<div class="checks">' +
+      check("f-showhp", "showHp", m.showHp, "Show exact HP numbers (the games only show your own)") +
+      check("f-hover", "hover", m.hover, "Show an info panel when a reader points at this Pokémon") +
+      check("f-summoves", "sumMoves", m.sumMoves, "List its moves in the info panel", !m.hover) +
+      check("f-target", "target", m.target, "Mark as the target (gold arrow)") + "</div>";
+    var n = state[side].mons.length, i = +sel.split("-")[1];
+    h += '<div class="code-bar">' + (n > 1 ? '<button type="button" class="btn-ghost" id="slot-left"' + (i === 0 ? " disabled" : "") + ">← Move left</button>" +
+      '<button type="button" class="btn-ghost" id="slot-right"' + (i === n - 1 ? " disabled" : "") + ">Move right →</button>" : "") +
+      '<button type="button" class="btn-ghost danger" id="slot-clear">Remove this Pokémon</button></div>';
+    return h;
+  }
+
+  function renderEditor() {
+    var focusId = document.activeElement && editor.contains(document.activeElement) ? document.activeElement.id : null;
+    editor.innerHTML = editorHTML();
+    if (focusId && document.getElementById(focusId)) document.getElementById(focusId).focus();
+    checkPicture();
+    var m = cur();
+    if (m && m.dex && !learnsets[m.dex]) loadLearnset(m.dex);
+  }
+
+  function setField(el) {
+    var f = el.dataset.f, m = cur(); if (!m) return;
+    var side = sideOf(sel), v = el.type === "checkbox" ? el.checked : el.value;
+    if (f === "empty") {
+      if (v === "yes") { state[side].mons[+sel.split("-")[1]] = newMon(side, true); }
+      else { m.empty = false; }
+      fillDynamic(); return;
+    }
+    if (f === "level") {
+      v = clampInt(v, 1, 100);
+      if (m.autoHp && m.baseHp) { var wasFull = m.hp >= m.maxHp, nm = calcHp(m.baseHp, v); m.hp = wasFull ? nm : Math.min(m.hp, nm); m.maxHp = nm; syncHpInputs(m); }
+    }
+    if (f === "hp") v = clampInt(v, 0, m.maxHp);
+    if (f === "maxHp") { v = clampInt(v, 1, 9999); m.autoHp = false; if (m.hp > v) { m.hp = v; syncHpInputs(m, "hp"); } }
+    if (f === "size") v = clampInt(v, 40, 200);
+    if (f === "type0") { m.types[0] = v; return; }
+    if (f === "type1") { m.types[1] = v; return; }
+    if (f === "target" && v) fieldMons().forEach(function (x) { x[1].target = false; });
+    if (f === "sprite") { m.custom = true; }
+    m[f] = v;
+    if (f === "shiny" || f === "gender") autoSprite(m, side);
+    if (f === "name" || f === "species") fillDynamic();
+  }
+  function syncHpInputs(m, only) {
+    if ((!only || only === "hp") && $("#f-hp")) $("#f-hp").value = m.hp;
+    if ((!only || only === "max") && $("#f-maxhp")) $("#f-maxhp").value = m.maxHp;
+  }
+
+  editor.addEventListener("input", function (e) {
+    var el = e.target;
+    if (el.dataset.mv) { setMove(el); render(); if (/\.name$/.test(el.dataset.mv)) fillDynamic(); return; }
+    if (!el.dataset.f || el.type === "radio" || el.type === "checkbox" || el.tagName === "SELECT") return;
+    setField(el); render();
+    if (el.dataset.f === "sprite") { clearTimeout(checkPicture.t); checkPicture.t = setTimeout(checkPicture, 450); }
+  });
+  editor.addEventListener("change", function (e) {
+    var el = e.target;
+    if (el.dataset.mv) {
+      if (el.tagName === "SELECT") { setMove(el); render(); }
+      if (/\.name$/.test(el.dataset.mv)) lookupMove(+el.dataset.mv.split(".")[0]);
+      return;
+    }
+    if (!el.dataset.f) return;
+    if (el.type === "radio" || el.type === "checkbox" || el.tagName === "SELECT") {
+      setField(el); render();
+      if (el.hasAttribute("data-struct") || el.dataset.f === "gender") renderEditor();
+      if (el.dataset.f === "shiny") checkPicture();
+    }
+  });
+  editor.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    if (e.target.id === "f-species") { e.preventDefault(); doLookup(); }
+    else if (e.target.dataset.mv && /\.name$/.test(e.target.dataset.mv)) { e.preventDefault(); lookupMove(+e.target.dataset.mv.split(".")[0]); }
+  });
+  editor.addEventListener("click", function (e) {
+    var id = e.target.id, m = cur();
+    if (id === "lookup-btn") { doLookup(); return; }
+    if (!m) return;
+    if (id === "hp-full" || id === "hp-half" || id === "hp-faint") {
+      m.hp = id === "hp-full" ? m.maxHp : id === "hp-half" ? Math.floor(m.maxHp / 2) : 0;
+      syncHpInputs(m, "hp"); render(); return;
+    }
+    if (id === "auto-sprite") {
+      if (m.sp) { m.custom = false; autoSprite(m, sideOf(sel)); render(); renderEditor(); }
+      else if (m.dex) pickPokemon(String(m.dex), true);
+      return;
+    }
+    if (id === "slot-left" || id === "slot-right") {
+      var side = sideOf(sel), i = +sel.split("-")[1], j = i + (id === "slot-left" ? -1 : 1), mons = state[side].mons;
+      if (j < 0 || j >= mons.length) return;
+      var t = mons[i]; mons[i] = mons[j]; mons[j] = t;
+      remapKey(side + "-" + i, side + "-" + j);
+      sel = side + "-" + j; fillDynamic(); render(); renderEditor();
+      if ($("#" + id) && !$("#" + id).disabled) $("#" + id).focus();
+      return;
+    }
+    if (id === "slot-clear") {
+      var sd = sideOf(sel); state[sd].mons[+sel.split("-")[1]] = newMon(sd, true);
+      lookupMsg = ""; fillDynamic(); render(); renderEditor(); return;
+    }
+    var res = e.target.closest(".result");
+    if (res) pickPokemon(lastResults[+res.dataset.i][0]);
+  });
+  /* When two Pokémon swap places, the move panel and the log line follow them. */
+  function remapKey(a, b) {
+    ["movesOf"].forEach(function (k) { if (state[k] === a) state[k] = b; else if (state[k] === b) state[k] = a; });
+    if (state.log.target === a) state.log.target = b; else if (state.log.target === b) state.log.target = a;
+  }
+
+  function setMove(el) {
+    var m = cur(); if (!m) return;
+    var p = el.dataset.mv.split("."), mv = m.moves[+p[0]], f = p[1];
+    if (f === "pp" || f === "ppMax") mv[f] = el.value === "" ? "" : clampInt(el.value, 0, 64);
+    else mv[f] = el.value;
+  }
+
+  /* ---------- Picture link checks ---------- */
+  function linkHint(url) {
+    if (/example\.com/i.test(url)) return "This is a placeholder link. Replace it with your own picture link.";
+    if (/^https?:\/\/(www\.|m\.)?imgur\.com\//i.test(url)) return "This is an Imgur page, not the picture. On Imgur, right-click the picture, choose “Copy image address”, and paste that (it starts with i.imgur.com).";
+    if (/drive\.google\.com|dropbox\.com|onedrive|1drv\.ms/i.test(url)) return "Cloud drive links don’t show on AO3. Upload the picture to an image host instead.";
+    if (/discord(app)?\.(com|net)/i.test(url)) return "Discord links stop working after a while. Upload the picture to an image host instead.";
+    if (/^http:\/\//i.test(url)) return "Use a link that starts with https://, or some readers’ browsers will block it.";
+    if (url && !/^https:\/\//i.test(url)) return "A picture link should start with https://";
+    return "";
+  }
+  function checkPicture() {
+    var m = cur(), st = $("#img-status"), th = $("#img-thumb");
+    if (!m || !st) return;
+    var url = String(m.sprite || "").trim(), hint = linkHint(url);
+    th.hidden = true;
+    if (!url) { st.className = "hint"; st.textContent = m.sp ? "No sprite exists for this Pokémon in this style." : ""; return; }
+    st.className = "hint"; st.textContent = "Checking the picture…";
+    var probe = new Image();
+    probe.onload = function () {
+      if (cur() !== m || String(m.sprite).trim() !== url) return;
+      var back = sideOf(sel) === "me" && !m.custom && !/\/back\//.test(url);
+      st.className = hint ? "hint bad" : "hint ok";
+      st.textContent = "✓ Picture found (" + probe.naturalWidth + " × " + probe.naturalHeight + ")." + (back ? " There’s no back view of this Pokémon, so it faces the camera." : "") + (hint ? " " + hint : "");
+      th.src = url; th.hidden = false;
+    };
+    probe.onerror = function () {
+      setTimeout(function () {
+        if (cur() !== m || String(m.sprite).trim() !== url) return;
+        st.className = "hint bad";
+        st.textContent = blocked.img
+          ? "Can’t check pictures here. " + BLOCKED_TIP + (hint ? " " + hint : "")
+          : "✗ This link doesn’t open a picture. " + (hint || "Use a direct link: open the picture on its own, then copy that address. It usually ends in .png or .gif.");
+      }, 150);
+    };
+    probe.src = url;
+  }
+
+  /* ---------- Blocked windows ----------
+     Some places that display HTML files (an app's file preview, a sandboxed page) forbid
+     connections to other websites. The browser reports each refusal, so we can tell that
+     apart from being offline and say what to do. */
+  var blocked = { connect: false, img: false };
+  document.addEventListener("securitypolicyviolation", function (e) {
+    var d = e.effectiveDirective || e.violatedDirective || "";
+    if (/connect|default/.test(d)) blocked.connect = true;
+    if (/img|default/.test(d)) blocked.img = true;
+  });
+  var BLOCKED_TIP = "This window blocks other websites. Open this page in a web browser such as Firefox or Chrome.";
+  function netError(what) {
+    return blocked.connect
+      ? what + " can’t reach the Pokémon database from here. " + BLOCKED_TIP
+      : navigator.onLine === false
+        ? "You seem to be offline. Reconnect and try again, or fill in the details yourself."
+        : "Couldn’t reach the Pokémon database. Try again in a moment, or fill in the details yourself. If it keeps failing, a browser extension (like an ad blocker) may be blocking pokeapi.co.";
+  }
+
+  /* ---------- Lookups (PokéAPI) ---------- */
+  var API = "https://pokeapi.co/api/v2/", dexList = null, jsonCache = {};
+  function getJSON(url) {
+    if (jsonCache[url]) return Promise.resolve(jsonCache[url]);
+    return fetch(url).then(function (r) {
+      if (!r.ok) { var err = new Error("http " + r.status); err.status = r.status; throw err; }
+      return r.json();
+    }).then(function (j) { jsonCache[url] = j; return j; });
+  }
+  function slugify(q) {
+    return String(q || "").toLowerCase().trim().replace(/♀/g, "-f").replace(/♂/g, "-m").replace(/[éè]/g, "e")
+      .replace(/[.'’:%]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-");
+  }
+  function loadDex() {
+    if (dexList) return Promise.resolve(dexList);
+    try {
+      var c = JSON.parse(localStorage.getItem("pkb-dex-list"));
+      if (c && c.list && c.t > Date.now() - 30 * 864e5) { dexList = c.list; return Promise.resolve(dexList); }
+    } catch (e) { /* no cache */ }
+    return getJSON(API + "pokemon?limit=2000").then(function (j) {
+      dexList = j.results.map(function (r) { var m = r.url.match(/\/(\d+)\/?$/); return [r.name, m ? +m[1] : 0]; });
+      try { localStorage.setItem("pkb-dex-list", JSON.stringify({ t: Date.now(), list: dexList })); } catch (e) { /* fine */ }
+      return dexList;
+    });
+  }
+  function showLookup(html) { lookupMsg = html; if ($("#lookup-out")) $("#lookup-out").innerHTML = html; }
+  function doLookup() {
+    var q = ($("#f-species").value || "").trim(), s = slugify(q);
+    if (s.length < 2) { showLookup('<p class="hint bad">Type at least 2 letters of the Pokémon’s name first.</p>'); return; }
+    showLookup('<p class="hint">Searching…</p>');
+    loadDex().then(function (list) {
+      var hits = list.filter(function (x) { return x[0].indexOf(s) >= 0; });
+      var exact = hits.filter(function (x) { return x[0] === s; })[0];
+      if (exact) { pickPokemon(exact[0]); return; }
+      if (!hits.length) { showLookup('<p class="hint bad">No Pokémon found matching “' + esc(q) + '”. Check the spelling, or fill in the details yourself.</p>'); return; }
+      hits.sort(function (a, b) { return (b[0].indexOf(s) === 0) - (a[0].indexOf(s) === 0) || (a[1] > 10000) - (b[1] > 10000) || a[1] - b[1]; });
+      lastResults = hits.slice(0, 15);
+      showLookup('<p class="hint">Pick the Pokémon:</p><div class="results">' + lastResults.map(function (d, i) {
+        return '<button type="button" class="result" data-i="' + i + '"><b>' + esc(prettySlug(d[0])) + "</b><span>" + (d[1] < 10000 ? "#" + d[1] : "form") + "</span></button>";
+      }).join("") + "</div>");
+    }).catch(function () { setTimeout(function () { showLookup('<p class="hint bad">' + netError("Look up") + "</p>"); }, 150); });
+  }
+  function pickPokemon(name, spriteOnly) {
+    var m = cur(), key = sel; if (!m) return;
+    showLookup('<p class="hint">Loading ' + esc(prettySlug(name)) + "…</p>");
+    getJSON(API + "pokemon/" + name).then(function (p) {
+      return getJSON(p.species.url).then(function (sp) { return [p, sp]; }, function () { return [p, null]; });
+    }).then(function (r) {
+      if (cur() !== m || sel !== key) return;
+      applyPokemon(m, r[0], r[1], spriteOnly);
+    }).catch(function (err) {
+      setTimeout(function () { showLookup('<p class="hint bad">' + (err && err.status ? "PokéAPI couldn’t find that Pokémon." : netError("Look up")) + "</p>"); }, 150);
+    });
+  }
+  function applyPokemon(m, p, sp, spriteOnly) {
+    var side = sideOf(sel), s = p.sprites || {}, an = s.versions && s.versions["generation-v"] && s.versions["generation-v"]["black-white"] && s.versions["generation-v"]["black-white"].animated;
+    var pickKeys = function (o) {
+      var out = {}; if (!o) return null;
+      ["front_default", "back_default", "front_shiny", "back_shiny", "front_female", "back_female", "front_shiny_female", "back_shiny_female"].forEach(function (k) { if (o[k]) out[k] = o[k]; });
+      return out;
+    };
+    m.sp = { still: pickKeys(s), anim: pickKeys(an) };
+    m.dex = p.id; m.custom = false;
+    if (!spriteOnly) {
+      var en = sp && (sp.names.filter(function (n) { return n.language.name === "en"; })[0] || {}).name || prettySlug(p.name);
+      var form = sp && p.name !== sp.name && p.name.indexOf(sp.name + "-") === 0 ? prettySlug(p.name.slice(sp.name.length + 1)) : "";
+      m.species = en + (form ? " (" + form + ")" : "");
+      var ts = p.types.slice().sort(function (a, b) { return a.slot - b.slot; }).map(function (t) { return t.type.name; });
+      m.types = [typeOk(ts[0]), ts[1] && TYPES.indexOf(ts[1]) >= 0 ? ts[1] : ""];
+      if (sp) {
+        if (sp.gender_rate === -1) m.gender = "";
+        else if (sp.gender_rate === 0) m.gender = "m";
+        else if (sp.gender_rate === 8) m.gender = "f";
+        else if (!m.gender) m.gender = "m";
+      }
+      var hpStat = (p.stats || []).filter(function (x) { return x.stat.name === "hp"; })[0];
+      m.baseHp = hpStat ? hpStat.base_stat : 0;
+      if (m.baseHp) { m.autoHp = true; m.maxHp = calcHp(m.baseHp, m.level); m.hp = m.maxHp; }
+      m.abilities = (p.abilities || []).map(function (a) { return prettySlug(a.ability.name); });
+      if (m.abilities.indexOf(m.ability) < 0) m.ability = m.abilities[0] || "";
+      learnsets[p.id] = (p.moves || []).map(function (x) { return prettySlug(x.move.name); }).sort();
+    }
+    autoSprite(m, side);
+    lookupMsg = '<p class="hint ok">✓ ' + (spriteOnly ? "Sprite restored." : "Filled in " + esc(m.species) + (m.baseHp ? ". Max HP is worked out from its level (perfect IVs, no EVs)." : ".")) + "</p>";
+    fillDynamic(); render(); renderEditor();
+  }
+  function loadLearnset(dex) {
+    learnsets[dex] = learnsets[dex] || [];
+    getJSON(API + "pokemon/" + dex).then(function (p) {
+      learnsets[dex] = (p.moves || []).map(function (x) { return prettySlug(x.move.name); }).sort();
+      var dl = $("#learn-dl"), m = cur();
+      if (dl && m && m.dex === dex) dl.innerHTML = learnsets[dex].map(function (n) { return '<option value="' + esc(n) + '">'; }).join("");
+    }).catch(function () { /* the suggestions are a nicety; typing still works */ });
+  }
+  function lookupMove(i) {
+    var m = cur(); if (!m) return;
+    var mv = m.moves[i], slug = slugify(mv.name);
+    if (!slug) return;
+    var st = $("#mv-status"); if (st) { st.className = "hint"; st.textContent = "Looking up " + mv.name + "…"; }
+    getJSON(API + "move/" + slug).then(function (d) {
+      if (cur() !== m || m.moves[i] !== mv || slugify(mv.name) !== slug) return;
+      var en = (d.names || []).filter(function (n) { return n.language.name === "en"; })[0];
+      if (en) mv.name = en.name;
+      mv.type = typeOk(d.type && d.type.name);
+      if (d.pp) { mv.ppMax = d.pp; if (mv.pp === "" || +mv.pp > d.pp) mv.pp = d.pp; }
+      moveMsg = "";
+      render(); renderEditor(); fillDynamic();
+      var s2 = $("#mv-status"); if (s2) { s2.className = "hint ok"; s2.textContent = "✓ " + mv.name + ": " + cap(mv.type) + (d.pp ? ", " + d.pp + " PP." : "."); }
+    }).catch(function (err) {
+      setTimeout(function () {
+        var s3 = $("#mv-status"); if (!s3) return;
+        s3.className = "hint bad";
+        s3.textContent = err && err.status === 404 ? "No move called “" + mv.name + "”. Check the spelling, or set its type and PP yourself." : netError("Move look up");
+      }, 150);
+    });
+  }
+
+  /* ---------- Side panels ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll("[data-p]"), function (el) {
+    var evt = el.type === "checkbox" || el.type === "radio" || el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(evt, function () {
+      var path = el.dataset.p.split("."), v = el.type === "checkbox" ? el.checked : el.value;
+      if (el.id === "turn") v = clampInt(v, 0, 999);
+      if (el.id === "move-sel") v = parseInt(v, 10);
+      if (path.length === 2) state[path[0]][path[1]] = v; else state[path[0]] = v;
+      if (el.dataset.p === "spriteStyle") SIDES.forEach(function (side) { state[side].mons.forEach(function (m) { autoSprite(m, side); }); });
+      if (el.id === "moves-of") state.moveSel = -1;
+      render();
+      if (/name$/.test(el.id) || el.id === "moves-of") fillDynamic();
+      if (/name$/.test(el.id) && sel) renderEditor();
+      if (el.dataset.p === "spriteStyle" && sel) renderEditor();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-count]"), function (el) {
+    el.addEventListener("change", function () {
+      var side = el.dataset.count, mons = state[side].mons, n = clampInt(el.value, 1, 3);
+      while (mons.length < n) mons.push(newMon(side, true));
+      mons.length = n;
+      if (sel && !monAt(sel)) { sel = null; renderEditor(); }
+      fillDynamic(); render();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-l]"), function (el) {
+    el.addEventListener(el.tagName === "SELECT" || el.type === "checkbox" ? "change" : "input", function () {
+      var k = el.dataset.l;
+      state.log[k] = k === "delta" ? (parseInt(el.value, 10) || 0) : el.type === "checkbox" ? el.checked : el.value;
+      render();
+    });
+  });
+  $("#apply-log").addEventListener("click", function () {
+    var x = logResult();
+    if (!x) { flash($("#log-status"), "Pick whose HP changes first."); return; }
+    x.m.hp = x.after;
+    render(); if (sel && cur() === x.m) renderEditor();
+    flash($("#log-status"), x.after === 0 ? "HP updated. It fainted: click its Poké Ball to mark it." : "HP updated on the battle screen.");
+  });
+  $("#what-will").addEventListener("click", function () {
+    var m = monAt(state.movesOf);
+    if (!m || m.empty) return;
+    state.msg = "What will " + dispName(m) + " do?";
+    $("#msg").value = state.msg; render();
+  });
+  function cycleBall(key) {
+    var p = key.split("-"), party = state[p[0]].party, i = +p[1];
+    party[i] = BALLS[(BALLS.indexOf(party[i]) + 1) % BALLS.length];
+    render();
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest(".balls-ed [data-ball]");
+    if (b) { var k = b.dataset.ball; cycleBall(k); var again = document.querySelector('.balls-ed [data-ball="' + k + '"]'); if (again) again.focus(); }
+  });
+
+  /* Clicking the preview: a Pokémon or its box opens the editor; a ball cycles; the message box jumps to its text. */
+  preview.addEventListener("click", function (e) {
+    var t = e.target;
+    if (t.closest(".pkb-sum")) return;
+    var ball = t.closest("[data-ball]"); if (ball) { cycleBall(ball.dataset.ball); return; }
+    if (t.closest("[data-msg]")) { $("#msg").focus(); return; }
+    var mEl = t.closest("[data-m]"); if (mEl) pick(mEl.dataset.m);
+  });
+  preview.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var mEl = e.target.closest("[data-m]"), msg = e.target.closest("[data-msg]");
+    if (mEl) { e.preventDefault(); pick(mEl.dataset.m); }
+    else if (msg) { e.preventDefault(); $("#msg").focus(); }
+  });
+  function pick(k) {
+    sel = k; lookupMsg = ""; moveMsg = "";
+    var m = monAt(k);
+    if (m && m.empty) { m.empty = false; fillDynamic(); }   /* the slot says "+ Add a Pokémon", so clicking it adds one */
+    render(); renderEditor();
+    if (m && !m.species && $("#f-species")) $("#f-species").focus();
+    var again = preview.querySelector('.pkb-mon[data-m="' + k + '"]');
+    if (again) again.focus({ preventScroll: true });
+    if (window.matchMedia("(max-width: 900px)").matches) $("#mon-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  /* ---------- Copy, load, clear ---------- */
+  function flash(el, msg) { el.textContent = msg; clearTimeout(el._t); el._t = setTimeout(function () { el.textContent = ""; }, 2600); }
+  function copy(text, ta, status) {
+    var fallback = function () {
+      if (ta) { ta.focus(); ta.select(); }
+      var ok = false; try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      flash(status, ok ? "Copied." : "Selected: press Ctrl+C (or ⌘C) to copy.");
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { flash(status, "Copied."); }, fallback);
+    else fallback();
+  }
+  /* The HP bar width classes are written out here instead of by hand: pkb-w0 … pkb-w100. */
+  var widthRules = [];
+  for (var w = 0; w <= 100; w += 5) {
+    var line = [];
+    for (var k = w; k < w + 5 && k <= 100; k++) line.push(".pkb-w" + k + " { width: " + k + "%; }");
+    widthRules.push(line.join(" "));
+  }
+  var RAW_SKIN = $("#skin-css").textContent.trim() + "\n" + widthRules.join("\n") + "\n";
+  $("#skin-out").value = RAW_SKIN;
+  $("#copy-skin").addEventListener("click", function () {
+    var d = $("#skin-out").closest("details"); copy(RAW_SKIN, d.open ? $("#skin-out") : null, $("#skin-status"));
+  });
+  $("#copy-board").addEventListener("click", function () { copy(boardOut.value, boardOut, $("#board-status")); });
+  $("#copy-log").addEventListener("click", function () { copy(logHTML(), null, $("#log-status")); });
+
+  $("#load-btn").addEventListener("click", function () {
+    var st = $("#load-status"), before = state;
+    try {
+      state = parseBoard($("#load-in").value);
+      state.log = Object.assign({}, before.log, { target: state.log.target });   /* keep the log line you were writing */
+      sel = null; lookupMsg = ""; fillInputs(); render(); renderEditor();
+      st.className = "hint ok"; st.textContent = "Loaded. Pokémon without an info panel keep their name, level and HP, but not their types, ability or moves.";
+    } catch (e) {
+      state = before;
+      st.className = "hint bad"; st.textContent = "That doesn’t look like a battle screen from this builder. Paste the whole code, from the first <div class=\"pkb-battle\"> to the end.";
+    }
+  });
+  $("#example-btn").addEventListener("click", function () { state = exampleState(); sel = null; lookupMsg = ""; fillInputs(); render(); renderEditor(); });
+  var clearBtn = $("#clear-btn");
+  clearBtn.addEventListener("click", function () {
+    if (clearBtn.dataset.armed) {
+      delete clearBtn.dataset.armed; clearBtn.textContent = "Clear the battle";
+      state = emptyState(); sel = null; lookupMsg = ""; fillInputs(); render(); renderEditor();
+      return;
+    }
+    clearBtn.dataset.armed = "1"; clearBtn.textContent = "Click again to clear";
+    setTimeout(function () { if (clearBtn.dataset.armed) { delete clearBtn.dataset.armed; clearBtn.textContent = "Clear the battle"; } }, 3500);
+  });
+
+  /* ---------- Preview uses the real Work Skin, scoped like AO3 does ---------- */
+  var scoped = RAW_SKIN.replace(/\/\*[\s\S]*?\*\//g, "").replace(/([^{}]+)\{/g, function (m, sels) {
+    return sels.split(",").map(function (x) { return "#workskin " + x.trim(); }).join(", ") + " {";
+  });
+  var style = document.createElement("style"); style.textContent = scoped; document.head.appendChild(style);
+  var logStyle = document.createElement("style");
+  logStyle.textContent = scoped.replace(/#workskin /g, "#workskin-log ");
+  document.head.appendChild(logStyle);
+
+  fillInputs(); render(); renderEditor();
+})();
+</script>
+
+</body>
+</html>
